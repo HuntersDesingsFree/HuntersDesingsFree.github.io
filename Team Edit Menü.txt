@@ -1,0 +1,109 @@
+{
+  "content": "",
+  "tts": false,
+  "embeds": [
+    {
+      "id": 434296959,
+      "description": "",
+      "fields": [
+        {
+          "id": 604038962,
+          "name": "🏷️ ***__Teamnamen Ändern__***",
+          "value": "Ändere den Namen eines Team's."
+        },
+        {
+          "id": 580694798,
+          "name": "👑 ***__Captain ändern__***",
+          "value": "Ändere den Captain des Team's."
+        },
+        {
+          "id": 458030823,
+          "name": "➕ ***__Mitglied hinzufügen__***",
+          "value": "Füge ein Mitglied dem Team hinzu."
+        },
+        {
+          "id": 997403655,
+          "name": "➖ ***__Mitglied entfernen__***",
+          "value": "Entferne ein Mitglied auf dem Team."
+        },
+        {
+          "id": 118259597,
+          "name": "✅ ***__Bestätigen__***",
+          "value": "Bestätige die Änderungen an diesem Team."
+        }
+      ],
+      "author": {
+        "name": "⚙️ MMHelfer Module / 🔧 Team Edit"
+      },
+      "color": 5793266,
+      "thumbnail": {
+        "url": "https://cdn.discordapp.com/attachments/1355944291301720230/1371451366270046351/WITHOUT_BACKGROUND_WHITE_1.png?ex=68232f1e&is=6821dd9e&hm=10872228863b436bf6ddae66932855db809d1a4fcbd31b313e398a94e7bd13e8&"
+      }
+    }
+  ],
+  "components": [
+    {
+      "id": 437944919,
+      "type": 1,
+      "components": [
+        {
+          "id": 980897565,
+          "type": 2,
+          "style": 1,
+          "label": "Team Name ändern",
+          "action_set_id": "55581489",
+          "emoji": {
+            "name": "🏷️",
+            "animated": false
+          }
+        },
+        {
+          "id": 205513727,
+          "type": 2,
+          "style": 2,
+          "label": "Captain ändern",
+          "action_set_id": "81325652",
+          "emoji": {
+            "name": "👑",
+            "animated": false
+          }
+        },
+        {
+          "id": 205424062,
+          "type": 2,
+          "style": 2,
+          "label": "Mitglied hinzufügen",
+          "action_set_id": "139292488",
+          "emoji": {
+            "name": "➕",
+            "animated": false
+          }
+        },
+        {
+          "id": 820149681,
+          "type": 2,
+          "style": 4,
+          "label": "Mitglied entfernen ",
+          "action_set_id": "817887518",
+          "emoji": {
+            "name": "➖",
+            "animated": false
+          }
+        },
+        {
+          "id": 584261902,
+          "type": 2,
+          "style": 3,
+          "label": "Bestätigen",
+          "action_set_id": "252159505",
+          "emoji": {
+            "name": "✅",
+            "animated": false
+          }
+        }
+      ]
+    }
+  ],
+  "actions": {},
+  "flags": 0
+}
