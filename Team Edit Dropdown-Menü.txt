@@ -16,7 +16,7 @@
         "name": "⚙️ MMHelfer Module / 🔧 Team Edit "
       },
       "thumbnail": {
-        "url": "https://cdn.discordapp.com/attachments/1355944291301720230/1371451366270046351/WITHOUT_BACKGROUND_WHITE_1.png?ex=68232f1e&is=6821dd9e&hm=10872228863b436bf6ddae66932855db809d1a4fcbd31b313e398a94e7bd13e8&"
+        "url": "logo.png"
       }
     }
   ],
