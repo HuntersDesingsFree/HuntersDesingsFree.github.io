@@ -1,0 +1,151 @@
+{
+  "content": "",
+  "tts": false,
+  "embeds": [
+    {
+      "id": 652627557,
+      "color": 2336346,
+      "fields": [
+        {
+          "id": 301363729,
+          "name": "🏷️ ***__Team Name__***",
+          "value": "Es öffnet sich ein Eingabefeld wo du den Namen des Team's angeben musst."
+        },
+        {
+          "id": 193094995,
+          "name": "👥 ***__Mitglieder__***",
+          "value": "Es öffnet sich ein Eingabefeld wo du bis zu 7 Mitglieder dem Team hinzufügen kannst."
+        },
+        {
+          "id": 416022627,
+          "name": "👑 ***__Captain__***",
+          "value": "Es öffnet sich ein Eingabefeld um festzulegen wer der Captain des Team's ist."
+        },
+        {
+          "id": 96411808,
+          "name": "🔀 ***__Dropdown-Menü__***",
+          "value": "Wähle aus zu welcher Art Team das neue Team gehören soll."
+        },
+        {
+          "id": 665723602,
+          "name": "❌ ***__Abbruch__***",
+          "value": "Bricht die Erstellung des Team's ab!"
+        },
+        {
+          "id": 187203607,
+          "name": "✅ ***__Erstellen __***",
+          "value": "Bestätigen deine Eingabe um das Team zu erstellen "
+        }
+      ],
+      "author": {
+        "name": "⚙️ MMHelfer Module / ➕ Team Erstellung"
+      },
+      "thumbnail": {
+        "url": "https://cdn.discordapp.com/attachments/1355944291301720230/1371451366270046351/WITHOUT_BACKGROUND_WHITE_1.png?ex=68232f1e&is=6821dd9e&hm=10872228863b436bf6ddae66932855db809d1a4fcbd31b313e398a94e7bd13e8&"
+      }
+    }
+  ],
+  "components": [
+    {
+      "id": 311844347,
+      "type": 1,
+      "components": [
+        {
+          "id": 132451993,
+          "type": 2,
+          "style": 1,
+          "label": "Team Name",
+          "action_set_id": "930182113",
+          "emoji": {
+            "name": "🏷️",
+            "animated": false
+          }
+        },
+        {
+          "id": 218366219,
+          "type": 2,
+          "style": 2,
+          "label": "Mitglieder",
+          "action_set_id": "31506272",
+          "emoji": {
+            "name": "👥",
+            "animated": false
+          }
+        },
+        {
+          "id": 785799575,
+          "type": 2,
+          "style": 2,
+          "label": "Captain ",
+          "action_set_id": "483842622",
+          "emoji": {
+            "name": "👑",
+            "animated": false
+          }
+        },
+        {
+          "id": 187592518,
+          "type": 2,
+          "style": 4,
+          "label": "Abbruch",
+          "action_set_id": "570350547",
+          "emoji": {
+            "name": "❌",
+            "animated": false
+          }
+        },
+        {
+          "id": 589290711,
+          "type": 2,
+          "style": 3,
+          "label": "Erstellen",
+          "action_set_id": "332797335",
+          "emoji": {
+            "name": "✅",
+            "animated": false
+          }
+        }
+      ]
+    },
+    {
+      "id": 875442997,
+      "type": 1,
+      "components": [
+        {
+          "id": 97609076,
+          "type": 3,
+          "options": [
+            {
+              "id": 739421345,
+              "label": "Community Team",
+              "action_set_id": "698536281",
+              "emoji": {
+                "name": "🌐",
+                "animated": false
+              }
+            },
+            {
+              "id": 375432024,
+              "label": "Competitive Team",
+              "action_set_id": "684064021",
+              "emoji": {
+                "name": "🏆",
+                "animated": false
+              }
+            }
+          ],
+          "placeholder": "🌐 Community/🏆 Competitive"
+        }
+      ]
+    }
+  ],
+  "actions": {
+    "684064021": {
+      "actions": []
+    },
+    "698536281": {
+      "actions": []
+    }
+  },
+  "flags": 0
+}
