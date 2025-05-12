@@ -1,0 +1,39 @@
+{
+  "content": "",
+  "tts": false,
+  "embeds": [
+    {
+      "id": 652627557,
+      "color": 5793266,
+      "fields": [
+        {
+          "id": 791149839,
+          "name": "🔀 ***__Dropdown-Menü__***",
+          "value": "Wähle das Team aus was du bearbeiten möchtest."
+        }
+      ],
+      "author": {
+        "name": "⚙️ MMHelfer Module / 🔧 Team Edit "
+      },
+      "thumbnail": {
+        "url": "https://cdn.discordapp.com/attachments/1355944291301720230/1371451366270046351/WITHOUT_BACKGROUND_WHITE_1.png?ex=68232f1e&is=6821dd9e&hm=10872228863b436bf6ddae66932855db809d1a4fcbd31b313e398a94e7bd13e8&"
+      }
+    }
+  ],
+  "components": [
+    {
+      "id": 875442997,
+      "type": 1,
+      "components": [
+        {
+          "id": 97609076,
+          "type": 3,
+          "options": [],
+          "placeholder": "Team auswählen"
+        }
+      ]
+    }
+  ],
+  "actions": {},
+  "flags": 0
+}
