@@ -3,8 +3,6 @@
   "tts": false,
   "embeds": [
     {
-      "id": 870932538,
-      "description": "Über dieses Menü kannst du alles was mit Team's Zutun hat managen.",
       "author": {
         "name": "⚙️ MMHelfer Module "
       },
