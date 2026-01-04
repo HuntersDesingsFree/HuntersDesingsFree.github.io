@@ -2,12 +2,12 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>OBS Steering Wheel Wrapper</title>
+    <title>Steering Wheel</title>
     <style>
         body {
             margin: 0;
             padding: 0;
-            background-color: transparent; /* Wichtig für OBS (Transparenz) */
+            background-color: transparent;
             display: flex;
             justify-content: center;
             align-items: center;
@@ -16,8 +16,8 @@
         }
 
         .wheel-container {
-            width: 600px;  /* Größe in OBS anpassen */
-            height: 600px;
+            width: 1000px;
+            height: 1000px;
             display: flex;
             justify-content: center;
             align-items: center;
@@ -28,8 +28,8 @@
             height: 100%;
             border: none;
             transform-origin: center center;
-            /* Sorgt für eine flüssige Drehung ohne Ruckeln */
-            transition: transform 0.05s ease-out; 
+            /* We handle smoothing in JavaScript for better control */
+            will-change: transform;
         }
     </style>
 </head>
@@ -46,19 +46,31 @@
 
     <script>
         const iframe = document.getElementById('gamepad-iframe');
-        const MAX_ANGLE = 90; // Wie weit das Lenkrad drehen soll (90 Grad nach links/rechts)
-
+        const MAX_ANGLE = 90;
+        const DEADZONE = 0.05;
+        const SMOOTHING = 0.15;
+        let targetRotation = 0;
         function update() {
             const gps = navigator.getGamepads();
-            if (gps[0]) {
-                const xValue = gps[0].axes[0]; // Linker Stick Horizontal
-                const rotation = xValue * MAX_ANGLE;
-                iframe.style.transform = `rotate(${rotation}deg)`;
+            const gp = gps[0];
+            if (gp) {
+                let xValue = gp.axes[0];
+                if (Math.abs(xValue) < DEADZONE) {
+                    xValue = 0;
+                } else {
+                    xValue = (xValue - (Math.sign(xValue) * DEADZONE)) / (1 - DEADZONE);
+                }
+                targetRotation = xValue * MAX_ANGLE;
+                let diff = targetRotation - currentRotation;
+                currentRotation += diff * SMOOTHING;
+                iframe.style.transform = `rotate(${currentRotation}deg)`;
             }
             requestAnimationFrame(update);
         }
-
-        window.addEventListener("gamepadconnected", update);
+        window.addEventListener("gamepadconnected", () => {
+            console.log("Gamepad ready for steering!");
+            update();
+        });
     </script>
 </body>
 </html>
