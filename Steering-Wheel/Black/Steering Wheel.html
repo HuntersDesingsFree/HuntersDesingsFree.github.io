@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Steering Wheel Final</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: transparent;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        #wheel {
+            width: 945px;
+            height: 945px;
+            border: none;
+            /* Sorgt dafür, dass die Grafikkarte die Drehung übernimmt */
+            will-change: transform;
+            transform-origin: center center;
+        }
+    </style>
+</head>
+<body>
+
+    <iframe id="wheel" src="https://gamepadviewer.com/?p=1&css=https%3A%2F%2Fhuntersdesingsfree.github.io%2FSteering-Wheel%2FBlack%2FSteering%2520Wheel.css" allow="gamepad"></iframe>
+
+    <script>
+        const el = document.getElementById('wheel');
+        
+        // --- DEINE 3 SETTINGS ---
+        const MAX_ANGLE = 170;
+        const DEADZONE = 0.2;
+        const SMOOTHING = 0.06;
+
+        let curr = 0; 
+
+        function update() {
+            // Gamepads abrufen (unterstützt mehrere Browser-Standards)
+            const gamepads = navigator.getGamepads();
+            const gp = gamepads[0] || gamepads[1];
+
+            if (gp && gp.axes) {
+                let val = gp.axes[0]; // Linker Stick Horizontal
+
+                // 1. Deadzone Anwendung
+                if (Math.abs(val) < DEADZONE) {
+                    val = 0;
+                } else {
+                    // Re-Scaling für weichen Übergang
+                    val = (val - Math.sign(val) * DEADZONE) / (1 - DEADZONE);
+                }
+
+                // 2. Ziel-Winkel berechnen
+                const target = val * MAX_ANGLE;
+
+                // 3. Glättung (Smoothing)
+                // Wir berechnen den Unterschied und addieren einen Teil davon
+                let diff = target - curr;
+                curr += diff * SMOOTHING;
+
+                // Anti-Zuck-Snap: Wenn fast in Position, dann fixieren
+                if (Math.abs(diff) < 0.01) {
+                    curr = target;
+                }
+
+                // Drehung auf das Element anwenden
+                el.style.transform = `rotate(${curr.toFixed(2)}deg)`;
+            }
+            
+            requestAnimationFrame(update);
+        }
+
+        // Start der Animation
+        update();
+    </script>
+</body>
+</html>
