@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>OBS Steering Wheel Wrapper</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: transparent; /* Wichtig für OBS (Transparenz) */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .wheel-container {
+            width: 600px;  /* Größe in OBS anpassen */
+            height: 600px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #gamepad-iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            transform-origin: center center;
+            /* Sorgt für eine flüssige Drehung ohne Ruckeln */
+            transition: transform 0.05s ease-out; 
+        }
+    </style>
+</head>
+<body>
+
+    <div class="wheel-container">
+        <iframe 
+            id="gamepad-iframe" 
+            src="https://gamepadviewer.com/?p=1&css=https%3A%2F%2Fhuntersdesingspaid.github.io%2FVictrix_Pro%2FBuffaloBeary%2FVictrix_Pro.css" 
+            allow="gamepad" 
+            scrolling="no">
+        </iframe>
+    </div>
+
+    <script>
+        const iframe = document.getElementById('gamepad-iframe');
+        const MAX_ANGLE = 90; // Wie weit das Lenkrad drehen soll (90 Grad nach links/rechts)
+
+        function update() {
+            const gps = navigator.getGamepads();
+            if (gps[0]) {
+                const xValue = gps[0].axes[0]; // Linker Stick Horizontal
+                const rotation = xValue * MAX_ANGLE;
+                iframe.style.transform = `rotate(${rotation}deg)`;
+            }
+            requestAnimationFrame(update);
+        }
+
+        window.addEventListener("gamepadconnected", update);
+    </script>
+</body>
+</html>
