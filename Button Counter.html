@@ -1,0 +1,910 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Controller Overlay V35 - No Presets</title>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Rajdhani:wght@600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            /* Default: Crimson Red */
+            --h: 348; --s: 83%; --l: 47%; --a: 1;
+            
+            /* Logic Vars */
+            --bg-opacity: 0.8; 
+            --ui-scale: 1; 
+            
+            /* Derived Colors */
+            --accent-color: hsla(var(--h), var(--s), var(--l), var(--a));
+            --gradient-center: hsla(var(--h), var(--s), var(--l), var(--bg-opacity));
+            
+            --text-color: #fff;
+            --font-pixel: 'Press Start 2P', cursive;
+            --font-ui: 'Rajdhani', sans-serif;
+        }
+
+        * { box-sizing: border-box; user-select: none; outline: none; -webkit-tap-highlight-color: transparent; }
+
+        body {
+            margin: 0; padding: 0;
+            background-color: transparent; 
+            color: var(--text-color);
+            font-family: var(--font-ui);
+            height: 100vh; width: 100vw;
+            overflow: hidden;
+            display: flex; align-items: center; justify-content: center;
+            touch-action: none;
+        }
+
+        /* --- BACKGROUND ANIMATION --- */
+        .anim-bg-effect {
+            background: #000;
+            position: relative;
+            overflow: hidden;
+            z-index: 1;
+        }
+        
+        .anim-bg-effect::before {
+            content: '';
+            position: absolute;
+            top: -100%; left: -100%;
+            width: 300%; height: 300%;
+            background: radial-gradient(circle, var(--accent-color) 0%, transparent 50%),
+                        radial-gradient(circle, var(--glow-color) 0%, transparent 60%);
+            opacity: 0.4;
+            animation: rotateSimple 15s linear infinite;
+            z-index: -1;
+            pointer-events: none;
+            will-change: transform;
+        }
+        
+        @keyframes rotateSimple {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        /* --- CONTAINER --- */
+        #app-container {
+            transition: opacity 0.2s ease;
+            width: fit-content; height: fit-content;
+            min-width: 50px; max-width: 98vw; max-height: 98vh;
+            padding: calc(10px * var(--ui-scale));
+            border-radius: calc(12px * var(--ui-scale));
+            display: flex; flex-direction: column;
+            position: relative; opacity: 0; margin: auto;
+            font-size: calc(16px * var(--ui-scale)); 
+            box-sizing: border-box;
+            overflow: visible;
+        }
+        #app-container.active-visible { opacity: 1; }
+
+        .scrollable-area {
+            overflow: hidden; 
+            display: flex;
+            justify-content: center;
+            width: 100%;
+        }
+
+        /* --- BACKGROUND MODES --- */
+        .transparent-mode { background: transparent; border: none; box-shadow: none; }
+        .glass-mode {
+            background: rgba(20, 20, 25, var(--bg-opacity));
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+        }
+        .color-mode {
+            background: radial-gradient(circle, var(--gradient-center) 0%, #000000 90%);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 0 20px #000;
+        }
+
+        /* --- STREAM LAYOUT --- */
+        .layout-stream { display: flex; gap: 0.4em; padding: 0.8em; }
+        .layout-stream.row { flex-direction: row; align-items: center; overflow-x: auto; scrollbar-width: none; padding-right: 1.5em; }
+        .layout-stream.row::-webkit-scrollbar { display: none; }
+        .layout-stream.col { flex-direction: column; align-items: center; overflow-y: auto; scrollbar-width: none; padding-bottom: 1.5em; }
+        .layout-stream.col::-webkit-scrollbar { display: none; }
+
+        .layout-stream .input-item {
+            opacity: 0.3; filter: grayscale(1); transform: scale(0.9);
+            border-left-color: #555; transition: opacity 0.2s, transform 0.2s;
+        }
+        .layout-stream .input-item:last-child {
+            opacity: 1; filter: grayscale(0) drop-shadow(0 0 0.5em var(--accent-color)); 
+            transform: scale(1.05); border-left-color: var(--accent-color);
+            z-index: 10; border: 1px solid rgba(255,255,255,0.2);
+            border-left: 0.2em solid var(--accent-color);
+        }
+
+        /* --- STATIC LAYOUT --- */
+        .layout-static { width: 100%; gap: 0.8em; }
+        
+        .layout-static.grp-row { display: flex; flex-direction: row; flex-wrap: wrap; justify-content: center; align-items: flex-start; }
+        .layout-static.grp-row .group-box { flex: 0 1 auto; }
+        .layout-static.grp-row .group-box .group-content { display: grid; grid-template-columns: repeat(auto-fill, minmax(7em, 1fr)); gap: 0.4em; }
+        .hide-labels .layout-static.grp-row .group-box .group-content { grid-template-columns: repeat(auto-fill, minmax(3.5em, 1fr)); }
+
+        .layout-static.grp-col { display: flex; flex-direction: column; align-items: stretch; width: 100%; min-width: 10em; }
+        .layout-static.grp-col .group-box .group-content { display: grid; grid-template-columns: repeat(auto-fill, minmax(7em, 1fr)); gap: 0.4em; }
+        .hide-labels .layout-static.grp-col .group-box .group-content { grid-template-columns: repeat(auto-fill, minmax(3.5em, 1fr)); }
+
+        .group-box {
+            background: rgba(255, 255, 255, 0.03); border-radius: 0.5em; padding: 0.5em;
+            display: flex; flex-direction: column; gap: 0.4em;
+            border: 1px solid rgba(255,255,255,0.05); height: fit-content;
+        }
+        .group-box.hidden-group { display: none; }
+
+        .group-header {
+            font-family: var(--font-pixel); font-size: 0.5em;
+            color: var(--accent-color); text-transform: uppercase;
+            margin-bottom: 0.2em; border-bottom: 1px solid rgba(255,255,255,0.1);
+            white-space: normal; overflow: visible; text-align: center; display: block;
+            line-height: 1.2; padding-bottom: 0.2em;
+        }
+
+        /* --- INPUT ITEMS --- */
+        .input-item {
+            display: flex; align-items: center; justify-content: space-between;
+            gap: 0.5em; padding: 0.4em 0.6em;
+            background: rgba(0, 0, 0, 0.7); border-radius: 0.3em;
+            border-left: 0.2em solid var(--accent-color); min-height: 2em;
+            animation: popIn 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            overflow: visible; 
+        }
+        .hide-labels .input-item { justify-content: center; padding: 0.4em; min-width: 2.5em; flex-direction: row; }
+        @keyframes popIn { 0% { transform: scale(0); } 100% { transform: scale(1); } }
+
+        .layout-static .input-item { opacity: 0.1; filter: grayscale(1); transition: opacity 0.1s, transform 0.1s; }
+        .layout-static .input-item.active { opacity: 1; filter: grayscale(0); transform: scale(1); }
+        .pressed-anim { animation: press 0.1s ease-out forwards; }
+        @keyframes press { 0% { transform: scale(0.92); filter: brightness(1.5); } 100% { transform: scale(1); } }
+
+        .content-wrap { display: flex; align-items: center; gap: 0.4em; overflow: hidden; }
+        .icon-svg { width: 1.3em; height: 1.3em; fill: #fff; filter: drop-shadow(0 0 2px var(--accent-color)); flex-shrink: 0; }
+        .btn-name { font-size: 0.9em; font-weight: 800; white-space: nowrap; }
+
+        .count-badge {
+            background: var(--accent-color); color: #000;
+            font-family: var(--font-pixel); font-size: 0.5em;
+            padding: 0.15em 0.3em; border-radius: 0.2em;
+            box-shadow: 0 0 0.3em var(--accent-color);
+            min-width: 1.2em; text-align: center;
+            z-index: 5;
+        }
+        .hide-labels .btn-name { display: none; }
+        .hide-labels .count-badge { margin-left: 0.4em; position: static; border: none; flex-shrink: 0; }
+
+        /* --- STATUS --- */
+        #status-display {
+            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            z-index: 100; pointer-events: none; text-align: center;
+        }
+        .status-box {
+            background: radial-gradient(circle, var(--gradient-center) 0%, #000000 90%);
+            border: 2px solid var(--accent-color);
+            padding: 20px; border-radius: 12px; box-shadow: 0 0 40px #000;
+            display: flex; flex-direction: column; align-items: center;
+        }
+        .status-text { font-family: var(--font-pixel); font-size: 1.1rem; color: #fff; margin-bottom: 8px; }
+        .status-sub { font-size: 0.75rem; color: #aaa; line-height: 1.6; }
+        .active-txt { color: #0f0; text-shadow: 0 0 8px #0f0; }
+
+        .logo-img { width: 55px; height: auto; margin-top: 15px; border-radius: 50%; border: 2px solid var(--accent-color); box-shadow: 0 0 15px var(--accent-color); }
+        .brand-text { font-size: 0.6rem; color: #666; margin-top: 10px; font-weight: bold; text-transform: uppercase; }
+
+        /* --- SETTINGS MENU --- */
+        #settings-menu {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 999;
+            display: flex; justify-content: center; align-items: center;
+            opacity: 0; pointer-events: none; transition: opacity 0.2s;
+        }
+        #settings-menu.open { opacity: 1; pointer-events: all; }
+
+        .menu-container {
+            width: 450px; max-width: 90vw; max-height: 90vh;
+            border: 2px solid var(--accent-color);
+            padding: 20px; border-radius: 10px;
+            display: flex; flex-direction: column; overflow-y: auto;
+            box-shadow: 0 0 40px rgba(0,0,0,0.9);
+            scrollbar-width: none;
+            background: radial-gradient(circle at center, var(--gradient-center) 0%, #050505 100%);
+        }
+        .menu-container::-webkit-scrollbar { display: none; }
+
+        .help-bar {
+            display: flex; justify-content: center; align-items: center; gap: 12px;
+            border-bottom: 1px solid #333; padding-bottom: 8px; margin-bottom: 10px;
+        }
+        .help-group { display: flex; align-items: center; gap: 5px; color: #888; font-size: 0.7rem; font-family: var(--font-pixel); }
+        .help-sep { color: #444; }
+        .icon-tiny { width: 18px; height: 18px; fill: var(--accent-color); display: block; }
+
+        .menu-header {
+            font-family: var(--font-pixel); color: var(--accent-color);
+            font-size: 0.85rem; margin-top: 15px; margin-bottom: 5px;
+            border-bottom: 1px solid var(--accent-color); padding-bottom: 3px;
+            text-shadow: 0 0 5px rgba(0,0,0,0.5);
+        }
+        .menu-header:first-of-type { margin-top: 0; }
+
+        .menu-item {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 7px 10px; margin-bottom: 3px; border-radius: 4px;
+            border: 1px solid transparent; cursor: pointer; background: rgba(255,255,255,0.02);
+        }
+        .menu-item.selected { background: rgba(255,255,255,0.1); border-color: var(--accent-color); }
+        .menu-label { font-size: 0.9rem; color: #bbb; }
+        .menu-val { font-weight: bold; font-size: 0.9rem; color: var(--accent-color); }
+
+        .btn-action { justify-content: center; font-weight: bold; letter-spacing: 1px; text-transform: uppercase; color: #fff; }
+        .btn-action.selected { background: var(--accent-color); color: #000; }
+        .btn-danger { color: #f55; }
+        .btn-danger.selected { background: #d00; color: #fff; border-color: #fff; }
+
+        .slider-wrapper { display: flex; flex-direction: column; align-items: flex-end; width: 55%; }
+        .slider-val-disp { font-size: 0.7rem; color: #aaa; margin-bottom: 2px; }
+        .slider-track { width: 100%; height: 6px; background: #333; border-radius: 3px; position: relative; cursor: pointer; }
+        .slider-fill { height: 100%; background: var(--accent-color); width: 50%; pointer-events: none; }
+        .slider-thumb { 
+            width: 10px; height: 10px; background: #fff; border-radius: 50%; 
+            position: absolute; top: -2px; transform: translateX(-50%); pointer-events: none; 
+        }
+
+        .toggle-row { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; width: 100%; margin-top: 5px; }
+        .toggle-chip {
+            font-size: 0.7rem; padding: 4px 8px; border: 1px solid #444; 
+            border-radius: 4px; color: #666; transition: all 0.2s;
+        }
+        .toggle-chip.on { border-color: var(--accent-color); color: #fff; background: rgba(255,255,255,0.05); }
+        .toggle-chip.chip-selected { background: #fff; color: #000; border-color: #fff; box-shadow: 0 0 8px #fff; }
+
+        .footer-brand {
+            text-align: center; margin-top: 15px; padding-top: 10px; border-top: 1px solid #333;
+            display: flex; flex-direction: column; align-items: center; gap: 5px;
+        }
+
+        #svg-defs { display: none; }
+    </style>
+</head>
+<body class="layout-static">
+
+    <img id="hd-logo-src" style="display:none;" src="https://i.imgur.com/23GvUxq.png" alt="HD Logo">
+
+    <svg id="svg-defs">
+        <symbol id="icon-dpad-all" viewBox="0 0 100 100"><path d="M40,10 L60,10 L60,40 L90,40 L90,60 L60,60 L60,90 L40,90 L40,60 L10,60 L10,40 L40,40 Z" fill="currentColor"/></symbol>
+        <!-- XBOX -->
+        <symbol id="icon-xb-a" viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" stroke="currentColor" stroke-width="8" fill="none"/><text x="50" y="70" font-family="Arial" font-weight="900" font-size="55" text-anchor="middle" fill="currentColor">A</text></symbol>
+        <symbol id="icon-xb-b" viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" stroke="currentColor" stroke-width="8" fill="none"/><text x="50" y="70" font-family="Arial" font-weight="900" font-size="55" text-anchor="middle" fill="currentColor">B</text></symbol>
+        <symbol id="icon-xb-x" viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" stroke="currentColor" stroke-width="8" fill="none"/><text x="50" y="70" font-family="Arial" font-weight="900" font-size="55" text-anchor="middle" fill="currentColor">X</text></symbol>
+        <symbol id="icon-xb-y" viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" stroke="currentColor" stroke-width="8" fill="none"/><text x="50" y="70" font-family="Arial" font-weight="900" font-size="55" text-anchor="middle" fill="currentColor">Y</text></symbol>
+        <symbol id="icon-xb-lb" viewBox="0 0 100 50"><rect x="5" y="5" width="90" height="40" rx="10" stroke="currentColor" stroke-width="6" fill="none"/><text x="50" y="32" font-family="Arial" font-weight="bold" font-size="24" text-anchor="middle" fill="currentColor">LB</text></symbol>
+        <symbol id="icon-xb-rb" viewBox="0 0 100 50"><rect x="5" y="5" width="90" height="40" rx="10" stroke="currentColor" stroke-width="6" fill="none"/><text x="50" y="32" font-family="Arial" font-weight="bold" font-size="24" text-anchor="middle" fill="currentColor">RB</text></symbol>
+        <symbol id="icon-xb-lt" viewBox="0 0 100 100"><path d="M20,20 Q50,5 80,20 L85,70 Q50,90 15,70 Z" stroke="currentColor" stroke-width="6" fill="none"/><text x="50" y="55" font-family="Arial" font-weight="bold" font-size="24" text-anchor="middle" fill="currentColor">LT</text></symbol>
+        <symbol id="icon-xb-rt" viewBox="0 0 100 100"><path d="M20,20 Q50,5 80,20 L85,70 Q50,90 15,70 Z" stroke="currentColor" stroke-width="6" fill="none"/><text x="50" y="55" font-family="Arial" font-weight="bold" font-size="24" text-anchor="middle" fill="currentColor">RT</text></symbol>
+        <symbol id="icon-xb-view" viewBox="0 0 100 60"><rect x="15" y="15" width="70" height="30" rx="4" stroke="currentColor" stroke-width="5" fill="none"/><rect x="28" y="22" width="20" height="16" fill="currentColor"/><rect x="55" y="22" width="12" height="16" fill="currentColor"/></symbol>
+        <symbol id="icon-xb-menu" viewBox="0 0 100 60"><rect x="15" y="15" width="70" height="30" rx="4" stroke="currentColor" stroke-width="5" fill="none"/><line x1="30" y1="23" x2="70" y2="23" stroke="currentColor" stroke-width="4"/><line x1="30" y1="30" x2="70" y2="30" stroke="currentColor" stroke-width="4"/><line x1="30" y1="37" x2="70" y2="37" stroke="currentColor" stroke-width="4"/></symbol>
+        <symbol id="icon-xb-logo" viewBox="0 0 100 100"><circle cx="50" cy="50" r="48" stroke="currentColor" stroke-width="4" fill="none"/><path d="M20,20 Q50,50 80,20 M20,80 Q50,50 80,80" stroke="currentColor" stroke-width="8" fill="none" stroke-linecap="round"/></symbol>
+        <!-- PS -->
+        <symbol id="icon-ps-cross" viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" stroke="currentColor" stroke-width="8" fill="none"/><path d="M35,35 L65,65 M65,35 L35,65" stroke="currentColor" stroke-width="10" stroke-linecap="round"/></symbol>
+        <symbol id="icon-ps-circle" viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" stroke="currentColor" stroke-width="8" fill="none"/><circle cx="50" cy="50" r="22" stroke="currentColor" stroke-width="10" fill="none"/></symbol>
+        <symbol id="icon-ps-square" viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" stroke="currentColor" stroke-width="8" fill="none"/><rect x="32" y="32" width="36" height="36" stroke="currentColor" stroke-width="10" fill="none"/></symbol>
+        <symbol id="icon-ps-triangle" viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" stroke="currentColor" stroke-width="8" fill="none"/><path d="M50,28 L72,65 L28,65 Z" stroke="currentColor" stroke-width="10" fill="none"/></symbol>
+        <symbol id="icon-ps-l1" viewBox="0 0 100 50"><rect x="5" y="5" width="90" height="40" rx="10" stroke="currentColor" stroke-width="6" fill="none"/><text x="50" y="32" font-family="Arial" font-weight="bold" font-size="24" text-anchor="middle" fill="currentColor">L1</text></symbol>
+        <symbol id="icon-ps-r1" viewBox="0 0 100 50"><rect x="5" y="5" width="90" height="40" rx="10" stroke="currentColor" stroke-width="6" fill="none"/><text x="50" y="32" font-family="Arial" font-weight="bold" font-size="24" text-anchor="middle" fill="currentColor">R1</text></symbol>
+        <symbol id="icon-ps-l2" viewBox="0 0 100 100"><path d="M20,20 Q50,5 80,20 L85,70 Q50,90 15,70 Z" stroke="currentColor" stroke-width="6" fill="none"/><text x="50" y="55" font-family="Arial" font-weight="bold" font-size="24" text-anchor="middle" fill="currentColor">L2</text></symbol>
+        <symbol id="icon-ps-r2" viewBox="0 0 100 100"><path d="M20,20 Q50,5 80,20 L85,70 Q50,90 15,70 Z" stroke="currentColor" stroke-width="6" fill="none"/><text x="50" y="55" font-family="Arial" font-weight="bold" font-size="24" text-anchor="middle" fill="currentColor">R2</text></symbol>
+        <symbol id="icon-ps-share" viewBox="0 0 100 60"><rect x="10" y="10" width="80" height="40" rx="20" stroke="currentColor" stroke-width="5" fill="none"/><text x="50" y="35" font-family="Arial" font-weight="bold" font-size="16" text-anchor="middle" fill="currentColor">SHARE</text></symbol>
+        <symbol id="icon-ps-options" viewBox="0 0 100 60"><rect x="10" y="10" width="80" height="40" rx="20" stroke="currentColor" stroke-width="5" fill="none"/><text x="50" y="35" font-family="Arial" font-weight="bold" font-size="16" text-anchor="middle" fill="currentColor">OPT</text></symbol>
+        <symbol id="icon-touchpad" viewBox="0 0 100 60"><rect x="5" y="5" width="90" height="50" rx="2" stroke="currentColor" stroke-width="5" fill="none"/><text x="50" y="35" font-family="Arial" font-size="14" text-anchor="middle" fill="currentColor">TOUCH</text></symbol>
+        <symbol id="icon-dpad-up" viewBox="0 0 100 100"><path d="M50,15 L80,45 L20,45 Z" fill="currentColor"/><rect x="35" y="45" width="30" height="30" fill="currentColor"/></symbol>
+        <symbol id="icon-dpad-down" viewBox="0 0 100 100"><path d="M50,85 L20,55 L80,55 Z" fill="currentColor"/><rect x="35" y="25" width="30" height="30" fill="currentColor"/></rect><symbol id="icon-dpad-left" viewBox="0 0 100 100"><path d="M15,50 L45,20 L45,80 Z" fill="currentColor"/><rect x="45" y="35" width="30" height="30" fill="currentColor"/></symbol>
+        <symbol id="icon-dpad-right" viewBox="0 0 100 100"><path d="M85,50 L55,80 L55,20 Z" fill="currentColor"/><rect x="25" y="35" width="30" height="30" fill="currentColor"/></symbol>
+        <symbol id="icon-stick-l" viewBox="0 0 100 100"><circle cx="50" cy="50" r="40" stroke="currentColor" stroke-width="5" fill="none"/><circle cx="50" cy="50" r="25" fill="currentColor"/><text x="50" y="58" font-family="Arial" font-weight="900" font-size="24" text-anchor="middle" fill="#000">L</text></symbol>
+        <symbol id="icon-stick-r" viewBox="0 0 100 100"><circle cx="50" cy="50" r="40" stroke="currentColor" stroke-width="5" fill="none"/><circle cx="50" cy="50" r="25" fill="currentColor"/><text x="50" y="58" font-family="Arial" font-weight="900" font-size="24" text-anchor="middle" fill="#000">R</text></symbol>
+    </svg>
+
+    <div id="status-display">
+        <div class="status-box">
+            <div class="status-text" id="status-txt">WAITING</div>
+            <div class="status-sub">
+                Hold START 2s to Active<br>
+                Double-Click START for Settings
+            </div>
+            <img src="" class="logo-img" id="hd-logo-disp">
+            <div class="brand-text">Created by Hunters Designs</div>
+        </div>
+    </div>
+
+    <div id="app-container" class="transparent-mode">
+        <div id="content-area" class="scrollable-area layout-static"></div>
+    </div>
+
+    <div id="settings-menu">
+        <div class="menu-container">
+            
+            <div class="help-bar">
+                <div class="help-group"><svg class="icon-tiny"><use href="#icon-dpad-all"></use></svg><svg class="icon-tiny"><use href="#icon-stick-l"></use></svg><span>Nav</span></div>
+                <span class="help-sep">|</span>
+                <div class="help-group"><svg class="icon-tiny"><use href="#icon-xb-a"></use></svg><svg class="icon-tiny"><use href="#icon-ps-cross"></use></svg><span>Confirm</span></div>
+                <span class="help-sep">|</span>
+                <div class="help-group"><svg class="icon-tiny"><use href="#icon-xb-b"></use></svg><svg class="icon-tiny"><use href="#icon-ps-circle"></use></svg><span>Back</span></div>
+            </div>
+
+            <div class="menu-item btn-action" data-id="reset_count">RESET COUNTS</div>
+
+            <!-- GENERAL SETTINGS -->
+            <div class="menu-header">GENERAL SETTINGS</div>
+
+            <div class="menu-item" data-id="theme">
+                <span class="menu-label">Theme</span><span class="menu-val" id="disp-theme">Xbox</span>
+            </div>
+            <div class="menu-item" data-id="view">
+                <span class="menu-label">View Mode</span><span class="menu-val" id="disp-view">Count</span>
+            </div>
+            <div class="menu-item" data-id="bg">
+                <span class="menu-label">Background</span><span class="menu-val" id="disp-bg">Transparent</span>
+            </div>
+            <div class="menu-item" data-id="labels">
+                <span class="menu-label">Show Labels</span><span class="menu-val" id="disp-labels">ON</span>
+            </div>
+            <div class="menu-item" data-id="grp_layout">
+                <span class="menu-label">Count Layout</span><span class="menu-val" id="disp-grp_layout">Row</span>
+            </div>
+            <div class="menu-item" data-id="layout">
+                <span class="menu-label">Stream Layout</span><span class="menu-val" id="disp-layout">Row</span>
+            </div>
+            
+            <!-- SCALE SLIDER -->
+            <div class="menu-item" data-id="scale" data-type="slider" data-min="10" data-max="500">
+                <span class="menu-label">Scale</span>
+                <div class="slider-wrapper">
+                    <div class="slider-val-disp" id="val-scale">1.00x</div>
+                    <div class="slider-track"><div class="slider-fill" id="fill-scale"></div><div class="slider-thumb" id="thumb-scale"></div></div>
+                </div>
+            </div>
+
+            <!-- STYLE SETTINGS -->
+            <div class="menu-header">STYLE SETTINGS</div>
+
+            <div class="menu-item" data-id="hue" data-type="slider" data-min="0" data-max="360">
+                <span class="menu-label">Hue</span>
+                <div class="slider-wrapper">
+                    <div class="slider-val-disp" id="val-hue">0°</div>
+                    <div class="slider-track"><div class="slider-fill" id="fill-hue"></div><div class="slider-thumb" id="thumb-hue"></div></div>
+                </div>
+            </div>
+            <div class="menu-item" data-id="sat" data-type="slider" data-min="0" data-max="100">
+                <span class="menu-label">Saturation</span>
+                <div class="slider-wrapper">
+                    <div class="slider-val-disp" id="val-sat">100%</div>
+                    <div class="slider-track"><div class="slider-fill" id="fill-sat"></div><div class="slider-thumb" id="thumb-sat"></div></div>
+                </div>
+            </div>
+            <div class="menu-item" data-id="lit" data-type="slider" data-min="0" data-max="100">
+                <span class="menu-label">Brightness</span>
+                <div class="slider-wrapper">
+                    <div class="slider-val-disp" id="val-lit">50%</div>
+                    <div class="slider-track"><div class="slider-fill" id="fill-lit"></div><div class="slider-thumb" id="thumb-lit"></div></div>
+                </div>
+            </div>
+            
+            <div class="menu-item" data-id="rgb_mode">
+                <span class="menu-label">RGB Mode</span><span class="menu-val" id="disp-rgb">OFF</span>
+            </div>
+
+            <div class="menu-item" data-id="rgb_speed" data-type="slider" data-min="1" data-max="50">
+                <span class="menu-label">RGB Speed</span>
+                <div class="slider-wrapper">
+                    <div class="slider-val-disp" id="val-rgb_speed">10</div>
+                    <div class="slider-track"><div class="slider-fill" id="fill-rgb_speed"></div><div class="slider-thumb" id="thumb-rgb_speed"></div></div>
+                </div>
+            </div>
+
+            <div class="menu-item" data-id="opac" data-type="slider" data-min="0" data-max="100">
+                <span class="menu-label">BG Opacity</span>
+                <div class="slider-wrapper">
+                    <div class="slider-val-disp" id="val-opac">100%</div>
+                    <div class="slider-track"><div class="slider-fill" id="fill-opac"></div><div class="slider-thumb" id="thumb-opac"></div></div>
+                </div>
+            </div>
+
+            <!-- VISIBLE GROUPS -->
+            <div class="menu-header">VISIBLE GROUPS</div>
+
+            <div class="menu-item" data-id="groups" style="flex-direction: column; align-items: flex-start;">
+                <div class="toggle-row" id="group-toggles" style="width: 100%;"></div>
+            </div>
+
+            <!-- RESET -->
+            <div class="menu-item btn-action btn-danger" data-id="reset_settings" style="margin-top: 15px;">RESET ALL SETTINGS</div>
+
+            <div class="footer-brand">
+                <img src="" class="logo-img" style="width: 40px; height: 40px;" id="hd-logo-sets">
+                <div class="brand-text">Created by Hunters Designs</div>
+            </div>
+        </div>
+    </div>
+
+<script>
+let CONFIG = {
+    theme: 'xbox', view: 'count', bg: 'transparent', labels: true,
+    streamLayout: 'row', groupLayout: 'row', rgbMode: false, rgbSpeed: 10,
+    color: { h:348, s:83, l:47, a:1 }, bgOpacity: 100, scale: 100,
+    groups: { face:1, dpad:1, trigger:1, bumper:1, stick:1, special:1 }
+};
+
+let isShowingFeedback = false;
+
+const STATE = {
+    active: false, menuOpen: false, menuIdx: 0, groupSelectIdx: 0,
+    start: { pressed:false, time:0, rel:0 },
+    lastDiscreteInput: 0, sliderHoldTime: 0,
+    // Store previous button states for strict edge detection
+    lastBtns: [], 
+    inputs: [], counts: {}, history: []
+};
+
+const MAP = {
+    0:{t:'face',id:'a',xb:{n:'A',i:'#icon-xb-a'},ps:{n:'Cross',i:'#icon-ps-cross'}},
+    1:{t:'face',id:'b',xb:{n:'B',i:'#icon-xb-b'},ps:{n:'Circle',i:'#icon-ps-circle'}},
+    2:{t:'face',id:'x',xb:{n:'X',i:'#icon-xb-x'},ps:{n:'Square',i:'#icon-ps-square'}},
+    3:{t:'face',id:'y',xb:{n:'Y',i:'#icon-xb-y'},ps:{n:'Triangle',i:'#icon-ps-triangle'}},
+    4:{t:'bumper',id:'lb',xb:{n:'LB',i:'#icon-xb-lb'},ps:{n:'L1',i:'#icon-ps-l1'}},
+    5:{t:'bumper',id:'rb',xb:{n:'RB',i:'#icon-xb-rb'},ps:{n:'R1',i:'#icon-ps-r1'}},
+    6:{t:'trigger',id:'lt',xb:{n:'LT',i:'#icon-xb-lt'},ps:{n:'L2',i:'#icon-ps-l2'}},
+    7:{t:'trigger',id:'rt',xb:{n:'RT',i:'#icon-xb-rt'},ps:{n:'R2',i:'#icon-ps-r2'}},
+    8:{t:'special',id:'sel',xb:{n:'View',i:'#icon-xb-view'},ps:{n:'Share',i:'#icon-ps-share'}},
+    9:{t:'special',id:'str',xb:{n:'Menu',i:'#icon-xb-menu'},ps:{n:'Options',i:'#icon-ps-options'}},
+    10:{t:'stick',id:'ls',xb:{n:'LS',i:'#icon-stick-l'},ps:{n:'L3',i:'#icon-stick-l'}},
+    11:{t:'stick',id:'rs',xb:{n:'RS',i:'#icon-stick-r'},ps:{n:'R3',i:'#icon-stick-r'}},
+    12:{t:'dpad',id:'du',xb:{n:'Up',i:'#icon-dpad-up'},ps:{n:'Up',i:'#icon-dpad-up'}},
+    13:{t:'dpad',id:'dd',xb:{n:'Down',i:'#icon-dpad-down'},ps:{n:'Down',i:'#icon-dpad-down'}},
+    14:{t:'dpad',id:'dl',xb:{n:'Left',i:'#icon-dpad-left'},ps:{n:'Left',i:'#icon-dpad-left'}},
+    15:{t:'dpad',id:'dr',xb:{n:'Right',i:'#icon-dpad-right'},ps:{n:'Right',i:'#icon-dpad-right'}},
+    17:{t:'special',id:'pad',xb:{n:'Touch',i:'#icon-touchpad'},ps:{n:'Touchpad',i:'#icon-touchpad'}}
+};
+const GROUPS = ['face','dpad','trigger','bumper','stick','special'];
+const G_NAMES = {face:'Faces',dpad:'D-Pad',trigger:'Triggers',bumper:'Bumpers',stick:'Sticks',special:'Menu'};
+
+const uiContent = document.getElementById('content-area');
+const uiContainer = document.getElementById('app-container');
+const uiStatus = document.getElementById('status-display');
+const uiStatusTxt = document.getElementById('status-txt');
+const uiMenu = document.getElementById('settings-menu');
+const menuItems = document.querySelectorAll('.menu-item');
+const logoSrc = document.getElementById('hd-logo-src').src;
+document.getElementById('hd-logo-disp').src = logoSrc;
+document.getElementById('hd-logo-sets').src = logoSrc;
+
+function loadConfig() {
+    const s = localStorage.getItem('ctrl_overlay_v35_cfg');
+    if(s) try { CONFIG = { ...CONFIG, ...JSON.parse(s) }; } catch(e){}
+    
+    // Init Visuals
+    const allSliders = document.querySelectorAll('.menu-item[data-type="slider"]');
+    allSliders.forEach(item => updateSliderVisuals(item));
+    
+    updateSettingsUI();
+    renderApp();
+}
+
+function saveConfig() {
+    localStorage.setItem('ctrl_overlay_v35_cfg', JSON.stringify(CONFIG));
+}
+
+function resetSettings() {
+    localStorage.removeItem('ctrl_overlay_v35_cfg');
+    CONFIG = { 
+        theme: 'xbox', view: 'count', bg: 'transparent', labels: true,
+        streamLayout: 'row', groupLayout: 'row', rgbMode: false, rgbSpeed: 10,
+        color: { h:348, s:83, l:47, a:1 }, bgOpacity: 100, scale: 100,
+        groups: { face:1, dpad:1, trigger:1, bumper:1, stick:1, special:1 }
+    };
+    saveConfig();
+    updateVisuals();
+    renderApp();
+    showBtnFeedback('reset_settings', 'RESET DONE', 'RESET ALL SETTINGS');
+}
+
+function resetCount() {
+    STATE.counts = {};
+    STATE.history = [];
+    uiContent.innerHTML = '';
+    if(CONFIG.view === 'count') renderStaticGrid();
+    showBtnFeedback('reset_count', 'CLEARED!', 'RESET COUNTS');
+}
+
+function showBtnFeedback(id, tempText, resetText) {
+    isShowingFeedback = true;
+    const btn = document.querySelector(`[data-id="${id}"]`);
+    btn.innerHTML = tempText;
+    setTimeout(() => {
+        btn.innerHTML = resetText;
+        isShowingFeedback = false;
+        updateSettingsUI();
+    }, 1200);
+}
+
+function updateSliderVisuals(item) {
+    const id = item.dataset.id;
+    const min = parseInt(item.dataset.min);
+    const max = parseInt(item.dataset.max);
+    
+    let val = 0;
+    if(id === 'hue') val = CONFIG.color.h;
+    else if(id === 'sat') val = CONFIG.color.s;
+    else if(id === 'lit') val = CONFIG.color.l;
+    else if(id === 'rgb_speed') val = CONFIG.rgbSpeed;
+    else if(id === 'scale') val = CONFIG.scale;
+    else if(id === 'opac') val = CONFIG.bgOpacity;
+
+    const pct = ((val - min) / (max - min)) * 100;
+    
+    const elF = document.getElementById('fill-'+id);
+    const elT = document.getElementById('thumb-'+id);
+    if(elF && elT) {
+        elF.style.width = pct + '%';
+        elT.style.left = pct + '%';
+    }
+}
+
+function updateVisuals() {
+    const r = document.documentElement;
+    r.style.setProperty('--h', CONFIG.color.h); 
+    r.style.setProperty('--s', CONFIG.color.s + '%');
+    r.style.setProperty('--l', CONFIG.color.l + '%'); 
+    r.style.setProperty('--bg-opacity', CONFIG.bgOpacity/100);
+    r.style.setProperty('--ui-scale', CONFIG.scale/100);
+    
+    if(STATE.menuOpen) {
+        document.getElementById('val-scale').innerText = (CONFIG.scale/100).toFixed(2) + 'x';
+        document.getElementById('val-hue').innerText = Math.round(CONFIG.color.h) + '°';
+        document.getElementById('val-sat').innerText = Math.round(CONFIG.color.s) + '%';
+        document.getElementById('val-lit').innerText = Math.round(CONFIG.color.l) + '%';
+        document.getElementById('val-rgb_speed').innerText = CONFIG.rgbSpeed;
+        document.getElementById('val-opac').innerText = CONFIG.bgOpacity + '%';
+        
+        const allSliders = document.querySelectorAll('.menu-item[data-type="slider"]');
+        allSliders.forEach(item => updateSliderVisuals(item));
+    }
+}
+
+function renderApp() {
+    updateVisuals();
+    const bgClass = CONFIG.bg === 'color' ? 'color-mode' : (CONFIG.bg === 'glass' ? 'glass-mode' : 'transparent-mode');
+    uiContainer.className = bgClass;
+    
+    if(STATE.active) uiContainer.classList.add('active-visible');
+    if(CONFIG.labels) uiContainer.classList.remove('hide-labels'); else uiContainer.classList.add('hide-labels');
+
+    if(document.activeElement.tagName !== 'INPUT') {
+        uiContent.innerHTML = '';
+        if(CONFIG.view === 'stream') {
+            uiContent.className = `scrollable-area layout-stream ${CONFIG.streamLayout}`;
+        } else {
+            uiContent.className = `scrollable-area layout-static grp-${CONFIG.groupLayout}`;
+            renderStaticGrid();
+        }
+    }
+}
+
+function renderStaticGrid() {
+    GROUPS.forEach(g => {
+        const box = document.createElement('div');
+        box.className = 'group-box'; box.id = 'grp-'+g;
+        if(!CONFIG.groups[g]) box.classList.add('hidden-group');
+        box.innerHTML = `<div class="group-header">${G_NAMES[g]}</div><div class="group-content"></div>`;
+        uiContent.appendChild(box);
+    });
+    for(let k in MAP) {
+        if(k==16) continue; if(CONFIG.theme === 'xbox' && k==17) continue;
+        const data = MAP[k]; const count = STATE.counts[k] || 0;
+        const el = createEl(data, count > 0 ? count : null);
+        el.id = 'btn-'+k; if(count > 0) el.classList.add('active');
+        const box = document.querySelector(`#grp-${data.t} .group-content`);
+        if(box) box.appendChild(el);
+    }
+}
+
+function createEl(data, count) {
+    const theme = CONFIG.theme==='xbox' ? data.xb : data.ps;
+    const div = document.createElement('div');
+    div.className = 'input-item';
+    div.innerHTML = `
+        <div class="content-wrap">
+            <svg class="icon-svg"><use href="${theme.i}"></use></svg>
+            <span class="btn-name">${theme.n}</span>
+        </div>
+        ${count ? `<div class="count-badge">${count}</div>` : ''}
+    `;
+    return div;
+}
+
+function loop() {
+    requestAnimationFrame(loop);
+    const gp = navigator.getGamepads()[0];
+    handleRGB();
+    if(!gp) return;
+    
+    // Read Current Buttons
+    const currBtns = []; 
+    for(let i=0; i<gp.buttons.length; i++) currBtns[i] = gp.buttons[i].pressed;
+    const currAxes = [...gp.axes];
+
+    // Main Control Flow
+    handleStart(gp); 
+    
+    if(STATE.menuOpen) {
+        handleMenuInput(currBtns, currAxes);
+    } else if(STATE.active) {
+        handleActiveInput(gp);
+    }
+    
+    // Update previous state at end of frame
+    STATE.lastBtns = currBtns;
+}
+
+function handleRGB() {
+    if(CONFIG.rgbMode) {
+        let inc = CONFIG.rgbSpeed * 0.06;
+        CONFIG.color.h = (CONFIG.color.h + inc) % 360;
+        updateVisuals(); 
+    }
+}
+
+function handleStart(gp) {
+    const pressed = gp.buttons[9].pressed;
+    const now = Date.now();
+    
+    if(pressed && !STATE.start.pressed) {
+        STATE.start.pressed = true; STATE.start.time = now;
+    } 
+    else if(pressed && STATE.start.pressed) {
+        // Holding - Activation only
+        if(!STATE.active && (now - STATE.start.time > 2000) && (now - STATE.start.time < 2200)) {
+             STATE.active = true;
+             uiStatusTxt.innerText = "ACTIVE"; uiStatusTxt.classList.add('active-txt');
+             uiContainer.classList.add('active-visible');
+             setTimeout(() => uiStatus.style.display = 'none', 1500);
+        }
+    } 
+    else if(!pressed && STATE.start.pressed) {
+        // Released
+        STATE.start.pressed = false;
+        const duration = now - STATE.start.time;
+        if(duration < 500) {
+            if(now - STATE.start.rel < 400) { toggleMenu(); }
+            else { if(STATE.active && !STATE.menuOpen) triggerInput(9, MAP[9]); }
+            STATE.start.rel = now;
+        }
+    }
+}
+
+function handleActiveInput(gp) {
+    for(let i=0; i<=17; i++) {
+        if(i===9) continue; 
+        if(i===16) continue; 
+        if(CONFIG.theme === 'xbox' && i === 17) continue;
+        const p = gp.buttons[i] ? gp.buttons[i].pressed : false;
+        if(p && !STATE.inputs[i]) { if(MAP[i]) triggerInput(i, MAP[i]); }
+        STATE.inputs[i] = p;
+    }
+}
+
+function triggerInput(idx, data) {
+    STATE.counts[idx] = (STATE.counts[idx] || 0) + 1;
+    STATE.history.push(data);
+    if(CONFIG.view === 'stream') {
+        const el = createEl(data, null);
+        uiContent.appendChild(el);
+        
+        const baseSize = CONFIG.labels ? 110 : 50; 
+        const scaledSize = baseSize * (CONFIG.scale / 100);
+        let maxItems = 10;
+        
+        if(CONFIG.streamLayout === 'row') {
+            maxItems = Math.max(3, Math.floor(window.innerWidth / scaledSize));
+        } else {
+            const itemHeight = (CONFIG.labels ? 40 : 40) * (CONFIG.scale / 100); 
+            maxItems = Math.max(3, Math.floor(window.innerHeight / itemHeight) - 2);
+        }
+        
+        while(uiContent.children.length > maxItems) {
+            uiContent.removeChild(uiContent.firstChild);
+        }
+        
+        if(CONFIG.streamLayout === 'row') uiContent.scrollLeft = uiContent.scrollWidth;
+        else uiContent.scrollTop = uiContent.scrollHeight;
+        
+    } else {
+        const el = document.getElementById('btn-'+idx);
+        if(el) {
+            el.classList.add('active');
+            el.classList.remove('pressed-anim'); void el.offsetWidth; el.classList.add('pressed-anim');
+            const badge = el.querySelector('.count-badge');
+            if(badge) badge.innerText = STATE.counts[idx];
+            else {
+                const b = document.createElement('div');
+                b.className = 'count-badge'; b.innerText = STATE.counts[idx];
+                el.appendChild(b);
+            }
+        }
+    }
+}
+
+function toggleMenu() {
+    STATE.menuOpen = !STATE.menuOpen;
+    uiMenu.className = STATE.menuOpen ? 'open' : '';
+    if(STATE.menuOpen) { 
+        STATE.groupSelectIdx = 0; buildToggleList(); updateMenuHighlight(); 
+    } else {
+        const gp = navigator.getGamepads()[0];
+        if(gp) for(let i=0; i<=17; i++) STATE.inputs[i] = gp.buttons[i].pressed;
+    }
+}
+
+function buildToggleList() {
+    const c = document.getElementById('group-toggles'); c.innerHTML = '';
+    GROUPS.forEach((g, idx) => {
+        const chip = document.createElement('div');
+        chip.className = `toggle-chip ${CONFIG.groups[g] ? 'on' : ''}`;
+        if(menuItems[STATE.menuIdx].dataset.id === 'groups' && STATE.groupSelectIdx === idx) {
+            chip.classList.add('chip-selected');
+        }
+        chip.innerText = G_NAMES[g];
+        c.appendChild(chip);
+    });
+}
+
+// --- STRICT EDGE DETECTION ---
+function handleMenuInput(currBtns, currAxes) {
+    const now = Date.now();
+    const lastBtns = STATE.lastBtns || [];
+    
+    // Rising Edge Check: (Current is Pressed) AND (Last was NOT Pressed)
+    const pressed = (i) => currBtns[i] && !lastBtns[i];
+    
+    // Stick Edge Check
+    const stickUp = currAxes[1] < -0.5;
+    const stickDown = currAxes[1] > 0.5;
+    const stickLeft = currAxes[0] < -0.5;
+    const stickRight = currAxes[0] > 0.5;
+    
+    // Edge logic for Stick (prevent spam unless released)
+    if (!STATE.stickState) STATE.stickState = { u: false, d: false, l: false, r: false };
+    
+    const edgeUp = stickUp && !STATE.stickState.u;
+    const edgeDown = stickDown && !STATE.stickState.d;
+    const edgeLeft = stickLeft && !STATE.stickState.l;
+    const edgeRight = stickRight && !STATE.stickState.r;
+
+    // Update stick state for next frame
+    STATE.stickState = { u: stickUp, d: stickDown, l: stickLeft, r: stickRight };
+
+    // --- NAVIGATION ---
+    if (pressed(12) || edgeUp) {
+        if(STATE.menuIdx > 0) { STATE.menuIdx--; updateMenuHighlight(); }
+    }
+    if (pressed(13) || edgeDown) {
+        if(STATE.menuIdx < menuItems.length - 1) { STATE.menuIdx++; updateMenuHighlight(); }
+    }
+
+    const item = menuItems[STATE.menuIdx];
+    const isGroups = item.dataset.id === 'groups';
+    const isSlider = item.dataset.type === 'slider';
+    
+    // --- VALUE CHANGE ---
+    
+    // Sliders: Allow holding for acceleration
+    if (isSlider) {
+        if (stickLeft || stickRight || currBtns[14] || currBtns[15]) {
+            STATE.sliderHoldTime++;
+            let speed = 1;
+            if(STATE.sliderHoldTime > 30) speed = 5; if(STATE.sliderHoldTime > 90) speed = 20; 
+            const dir = (stickRight || currBtns[15]) ? 1 : -1;
+            changeSetting(item, dir * speed);
+        } else {
+            STATE.sliderHoldTime = 0;
+        }
+    } 
+    // Non-Sliders: STRICT SINGLE CLICK ONLY (Edges)
+    else {
+        // Left/Right Nav for Groups
+        if (edgeLeft || pressed(14)) {
+            if (isGroups) {
+                STATE.groupSelectIdx--;
+                if(STATE.groupSelectIdx < 0) STATE.groupSelectIdx = GROUPS.length - 1;
+                buildToggleList();
+            }
+        }
+        if (edgeRight || pressed(15)) {
+            if (isGroups) {
+                STATE.groupSelectIdx++;
+                if(STATE.groupSelectIdx >= GROUPS.length) STATE.groupSelectIdx = 0;
+                buildToggleList();
+            }
+        }
+    }
+
+    // --- CONFIRM (A/X) ---
+    // Only triggers on Rising Edge
+    if (pressed(0) || pressed(2)) {
+        if (isGroups) {
+            const gName = GROUPS[STATE.groupSelectIdx];
+            CONFIG.groups[gName] = !CONFIG.groups[gName];
+            buildToggleList(); renderApp(); saveConfig(); 
+        } else if(item.dataset.id === 'reset_settings') {
+            resetSettings();
+        } else if(item.dataset.id === 'reset_count') {
+            resetCount();
+        } else if (!isSlider) {
+            changeSetting(item, 1); // Cycle forward
+        }
+    }
+
+    // --- BACK (B) ---
+    if (pressed(1)) {
+        toggleMenu(); 
+    }
+}
+
+function updateMenuHighlight() {
+    menuItems.forEach((m, i) => {
+        if(i === STATE.menuIdx) { m.classList.add('selected'); m.scrollIntoView({block:'nearest'}); } 
+        else m.classList.remove('selected');
+    });
+    buildToggleList();
+}
+
+function changeSetting(item, dir) {
+    const id = item.dataset.id;
+    
+    if(item.dataset.type === 'slider') {
+        if(id === 'hue') { CONFIG.color.h += dir; if(CONFIG.color.h>360) CONFIG.color.h=0; if(CONFIG.color.h<0) CONFIG.color.h=360; }
+        if(id === 'sat') { CONFIG.color.s += dir; if(CONFIG.color.s>100) CONFIG.color.s=100; if(CONFIG.color.s<0) CONFIG.color.s=0; }
+        if(id === 'lit') { CONFIG.color.l += dir; if(CONFIG.color.l>100) CONFIG.color.l=100; if(CONFIG.color.l<0) CONFIG.color.l=0; }
+        if(id === 'opac') { CONFIG.bgOpacity += dir; if(CONFIG.bgOpacity>100) CONFIG.bgOpacity=100; if(CONFIG.bgOpacity<0) CONFIG.bgOpacity=0; }
+        if(id === 'rgb_speed') { CONFIG.rgbSpeed += dir; if(CONFIG.rgbSpeed>50) CONFIG.rgbSpeed=50; if(CONFIG.rgbSpeed<1) CONFIG.rgbSpeed=1; }
+        if(id === 'scale') { CONFIG.scale += dir; if(CONFIG.scale>500) CONFIG.scale=500; if(CONFIG.scale<10) CONFIG.scale=10; }
+        
+        updateVisuals(); 
+        saveConfig();
+    } else {
+        if(id === 'theme') { CONFIG.theme = CONFIG.theme==='xbox'?'ps':'xbox'; }
+        if(id === 'view') { CONFIG.view = CONFIG.view==='stream'?'count':'stream'; }
+        if(id === 'bg') { 
+            const modes = ['transparent', 'glass', 'color'];
+            let idx = modes.indexOf(CONFIG.bg); idx = (idx + 1) % modes.length;
+            CONFIG.bg = modes[idx];
+        }
+        if(id === 'labels') { CONFIG.labels = !CONFIG.labels; }
+        if(id === 'layout') { CONFIG.streamLayout = CONFIG.streamLayout==='row'?'col':'row'; }
+        if(id === 'grp_layout') {
+            const opts = ['row', 'col'];
+            let idx = opts.indexOf(CONFIG.groupLayout); idx = (idx + 1) % opts.length;
+            CONFIG.groupLayout = opts[idx];
+        }
+        if(id === 'rgb_mode') { CONFIG.rgbMode = !CONFIG.rgbMode; }
+        
+        renderApp(); 
+        saveConfig();
+        updateSettingsUI();
+    }
+}
+
+function updateSettingsUI() {
+    if(isShowingFeedback) return;
+    const txt = (id, v) => { const el = document.getElementById('disp-'+id); if(el) el.innerText = v.toUpperCase(); }
+    txt('theme', CONFIG.theme); txt('view', CONFIG.view); txt('bg', CONFIG.bg);
+    txt('labels', CONFIG.labels?'ON':'OFF'); txt('layout', CONFIG.streamLayout);
+    txt('grp_layout', CONFIG.groupLayout.charAt(0).toUpperCase() + CONFIG.groupLayout.slice(1));
+    txt('rgb', CONFIG.rgbMode?'ON':'OFF');
+    updateVisuals();
+}
+
+loadConfig(); loop();
+</script>
+</body>
+</html>
