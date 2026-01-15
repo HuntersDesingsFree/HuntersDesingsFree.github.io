@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Controller Overlay Menü</title>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Rajdhani:wght@600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --h: 348; --s: 83%; --l: 47%; --a: 1;
+            --menu-bg-opacity: 0.95; 
+            
+            --accent-color: hsla(var(--h), var(--s), var(--l), var(--a));
+            --gradient-center: hsla(var(--h), var(--s), var(--l), 0.5);
+            --text-color: #fff;
+            
+            --font-pixel: 'Press Start 2P', cursive;
+            --font-ui: 'Rajdhani', sans-serif;
+
+            --global-hue: 0deg;
+            --global-sat: 100%;
+            --content-scale: 1;
+        }
+
+        * { box-sizing: border-box; user-select: none; outline: none; -webkit-tap-highlight-color: transparent; }
+
+        body {
+            margin: 0; padding: 0;
+            background-color: transparent; 
+            color: var(--text-color);
+            font-family: var(--font-ui);
+            height: 100vh; width: 100vw;
+            overflow: hidden;
+            display: flex; align-items: center; justify-content: center;
+        }
+
+        #app-container {
+            position: relative;
+            width: 946px;
+            height: 755px;
+            overflow: hidden;
+        }
+
+        #filter-wrapper {
+            width: 100%; height: 100%;
+            position: relative;
+            filter: hue-rotate(var(--global-hue)) saturate(var(--global-sat));
+            will-change: filter, transform;
+            transform: scale(var(--content-scale));
+            transform-origin: center center;
+            transition: transform 0.1s;
+        }
+
+        iframe { border: none; display: block; position: absolute; inset: 0; width: 100%; height: 100%; }
+        
+        #paddle-frame { z-index: 1; pointer-events: none; display: none; }
+        #paddle-frame.visible { display: block; }
+        
+        #target-frame { z-index: 2; pointer-events: none; }
+
+        #settings-menu {
+            position: absolute;
+            top: 50px; bottom: 50px; left: 80px; right: 80px;
+            z-index: 999;
+            display: flex; justify-content: center; align-items: center;
+            opacity: 0; pointer-events: none; transition: opacity 0.2s;
+        }
+        #settings-menu.open { opacity: 1; pointer-events: all; }
+
+        .menu-container {
+            width: 100%; height: 100%;
+            border: 2px solid var(--accent-color);
+            padding: 15px 20px; border-radius: 12px;
+            display: flex; flex-direction: column; overflow-y: auto;
+            box-shadow: 0 0 40px rgba(0,0,0,0.9);
+            scrollbar-width: none;
+            background: radial-gradient(circle at center, var(--gradient-center) 0%, #050505 100%);
+        }
+        .menu-container::-webkit-scrollbar { display: none; }
+
+        .help-bar {
+            display: flex; justify-content: center; align-items: center; gap: 12px;
+            border-bottom: 1px solid #333; padding-bottom: 8px; margin-bottom: 8px;
+            flex-shrink: 0;
+        }
+        .help-group { display: flex; align-items: center; gap: 5px; color: #888; font-size: 0.65rem; font-family: var(--font-pixel); }
+        .help-sep { color: #444; }
+        .icon-tiny { width: 16px; height: 16px; fill: var(--accent-color); display: block; }
+
+        .menu-header {
+            font-family: var(--font-pixel); color: var(--accent-color);
+            font-size: 0.75rem; margin-top: 12px; margin-bottom: 5px;
+            border-bottom: 1px solid var(--accent-color); padding-bottom: 2px;
+            text-shadow: 0 0 5px rgba(0,0,0,0.5);
+            flex-shrink: 0; text-transform: uppercase;
+        }
+        .menu-header:first-of-type { margin-top: 0; }
+
+        .menu-item {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 6px 10px; margin-bottom: 3px; border-radius: 4px;
+            border: 1px solid transparent; cursor: pointer; background: rgba(255,255,255,0.02);
+            flex-shrink: 0;
+        }
+        .menu-item.selected { background: rgba(255,255,255,0.1); border-color: var(--accent-color); }
+        
+        /* New style for active color selection */
+        .menu-item.active-opt { background: var(--accent-color); color: #000; font-weight: bold; }
+        .menu-item.active-opt .menu-label { color: #000; }
+        
+        .menu-label { font-size: 0.85rem; color: #bbb; display: flex; align-items: center; gap: 8px; }
+        .menu-val { font-weight: bold; font-size: 0.85rem; color: var(--accent-color); }
+
+        .btn-action { justify-content: center; font-weight: bold; letter-spacing: 1px; text-transform: uppercase; color: #fff; margin-top: 8px; font-size: 0.8rem; }
+        .btn-action.selected { background: var(--accent-color); color: #000; }
+        .btn-danger { color: #f55; }
+        .btn-danger.selected { background: #d00; color: #fff; border-color: #fff; }
+
+        .btn-row { display: flex; gap: 8px; width: 100%; margin-top: 5px; }
+        .btn-row .menu-item { flex: 1; text-align: center; justify-content: center; margin-top: 0; }
+
+        .slider-wrapper { display: flex; flex-direction: column; align-items: flex-end; width: 55%; }
+        .slider-val-disp { font-size: 0.7rem; color: #aaa; margin-bottom: 2px; }
+        .slider-track { width: 100%; height: 6px; background: #333; border-radius: 3px; position: relative; cursor: pointer; }
+        .slider-fill { height: 100%; background: var(--accent-color); width: 0%; pointer-events: none; }
+        .slider-thumb { 
+            width: 12px; height: 12px; background: #fff; border-radius: 50%; 
+            position: absolute; top: 50%; left: 0%; transform: translate(-50%, -50%); 
+            pointer-events: none; box-shadow: 0 0 5px #000;
+        }
+
+        .remap-row { 
+            display: grid; 
+            grid-template-columns: 1fr 40px 1fr; 
+            align-items: center; 
+            width: 100%; 
+        }
+        
+        .remap-left { display: flex; gap: 6px; align-items: center; justify-self: start; }
+        .icon-preview { width: 24px; height: 24px; fill: #fff; filter: drop-shadow(0 0 2px rgba(0,0,0,0.5)); }
+        
+        .map-arrow { 
+            color: var(--accent-color); 
+            font-size: 1.2rem; 
+            justify-self: center; 
+            text-align: center;
+        }
+        
+        .remap-right { justify-self: end; display: flex; align-items: center; gap: 6px; }
+        .icon-result { width: 24px; height: 24px; fill: var(--accent-color); }
+        .listening-anim { animation: blink 0.5s infinite; color: #ff0; font-weight: bold; font-family: var(--font-pixel); font-size: 0.7rem; }
+        @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
+
+        .footer-brand {
+            text-align: center; margin-top: auto; padding-top: 10px; border-top: 1px solid #333;
+            display: flex; flex-direction: column; align-items: center; gap: 5px;
+            flex-shrink: 0;
+        }
+        .logo-img { width: 40px; height: auto; border-radius: 50%; border: 2px solid var(--accent-color); box-shadow: 0 0 10px var(--accent-color); }
+        .brand-text { font-size: 0.55rem; color: #666; font-weight: bold; text-transform: uppercase; }
+
+        #svg-defs { display: none; }
+    </style>
+</head>
+<body>
+
+    <svg id="svg-defs">
+        <symbol id="icon-dpad-all" viewBox="0 0 100 100"><path d="M40,10 L60,10 L60,40 L90,40 L90,60 L60,60 L60,90 L40,90 L40,60 L10,60 L10,40 L40,40 Z" fill="currentColor"/></symbol>
+        
+        <symbol id="icon-xb-a" viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" stroke="currentColor" stroke-width="8" fill="none"/><text x="50" y="70" font-family="Arial" font-weight="900" font-size="55" text-anchor="middle" fill="currentColor">A</text></symbol>
+        <symbol id="icon-xb-b" viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" stroke="currentColor" stroke-width="8" fill="none"/><text x="50" y="70" font-family="Arial" font-weight="900" font-size="55" text-anchor="middle" fill="currentColor">B</text></symbol>
+        <symbol id="icon-xb-x" viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" stroke="currentColor" stroke-width="8" fill="none"/><text x="50" y="70" font-family="Arial" font-weight="900" font-size="55" text-anchor="middle" fill="currentColor">X</text></symbol>
+        <symbol id="icon-xb-y" viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" stroke="currentColor" stroke-width="8" fill="none"/><text x="50" y="70" font-family="Arial" font-weight="900" font-size="55" text-anchor="middle" fill="currentColor">Y</text></symbol>
+        <symbol id="icon-xb-lb" viewBox="0 0 100 50"><rect x="5" y="5" width="90" height="40" rx="10" stroke="currentColor" stroke-width="6" fill="none"/><text x="50" y="32" font-family="Arial" font-weight="bold" font-size="24" text-anchor="middle" fill="currentColor">LB</text></symbol>
+        <symbol id="icon-xb-rb" viewBox="0 0 100 50"><rect x="5" y="5" width="90" height="40" rx="10" stroke="currentColor" stroke-width="6" fill="none"/><text x="50" y="32" font-family="Arial" font-weight="bold" font-size="24" text-anchor="middle" fill="currentColor">RB</text></symbol>
+        <symbol id="icon-xb-lt" viewBox="0 0 100 100"><path d="M20,20 Q50,5 80,20 L85,70 Q50,90 15,70 Z" stroke="currentColor" stroke-width="6" fill="none"/><text x="50" y="55" font-family="Arial" font-weight="bold" font-size="24" text-anchor="middle" fill="currentColor">LT</text></symbol>
+        <symbol id="icon-xb-rt" viewBox="0 0 100 100"><path d="M20,20 Q50,5 80,20 L85,70 Q50,90 15,70 Z" stroke="currentColor" stroke-width="6" fill="none"/><text x="50" y="55" font-family="Arial" font-weight="bold" font-size="24" text-anchor="middle" fill="currentColor">RT</text></symbol>
+        <symbol id="icon-xb-view" viewBox="0 0 100 60"><rect x="15" y="15" width="70" height="30" rx="4" stroke="currentColor" stroke-width="5" fill="none"/><rect x="28" y="22" width="20" height="16" fill="currentColor"/><rect x="55" y="22" width="12" height="16" fill="currentColor"/></symbol>
+        <symbol id="icon-xb-menu" viewBox="0 0 100 60"><rect x="15" y="15" width="70" height="30" rx="4" stroke="currentColor" stroke-width="5" fill="none"/><line x1="30" y1="23" x2="70" y2="23" stroke="currentColor" stroke-width="4"/><line x1="30" y1="30" x2="70" y2="30" stroke="currentColor" stroke-width="4"/><line x1="30" y1="37" x2="70" y2="37" stroke="currentColor" stroke-width="4"/></symbol>
+        
+        <symbol id="icon-ps-cross" viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" stroke="currentColor" stroke-width="8" fill="none"/><path d="M35,35 L65,65 M65,35 L35,65" stroke="currentColor" stroke-width="10" stroke-linecap="round"/></symbol>
+        <symbol id="icon-ps-circle" viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" stroke="currentColor" stroke-width="8" fill="none"/><circle cx="50" cy="50" r="22" stroke="currentColor" stroke-width="10" fill="none"/></symbol>
+        <symbol id="icon-ps-square" viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" stroke="currentColor" stroke-width="8" fill="none"/><rect x="32" y="32" width="36" height="36" stroke="currentColor" stroke-width="10" fill="none"/></symbol>
+        <symbol id="icon-ps-triangle" viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" stroke="currentColor" stroke-width="8" fill="none"/><path d="M50,28 L72,65 L28,65 Z" stroke="currentColor" stroke-width="10" fill="none"/></symbol>
+        <symbol id="icon-ps-l1" viewBox="0 0 100 50"><rect x="5" y="5" width="90" height="40" rx="10" stroke="currentColor" stroke-width="6" fill="none"/><text x="50" y="32" font-family="Arial" font-weight="bold" font-size="24" text-anchor="middle" fill="currentColor">L1</text></symbol>
+        <symbol id="icon-ps-r1" viewBox="0 0 100 50"><rect x="5" y="5" width="90" height="40" rx="10" stroke="currentColor" stroke-width="6" fill="none"/><text x="50" y="32" font-family="Arial" font-weight="bold" font-size="24" text-anchor="middle" fill="currentColor">R1</text></symbol>
+        <symbol id="icon-ps-l2" viewBox="0 0 100 100"><path d="M20,20 Q50,5 80,20 L85,70 Q50,90 15,70 Z" stroke="currentColor" stroke-width="6" fill="none"/><text x="50" y="55" font-family="Arial" font-weight="bold" font-size="24" text-anchor="middle" fill="currentColor">L2</text></symbol>
+        <symbol id="icon-ps-r2" viewBox="0 0 100 100"><path d="M20,20 Q50,5 80,20 L85,70 Q50,90 15,70 Z" stroke="currentColor" stroke-width="6" fill="none"/><text x="50" y="55" font-family="Arial" font-weight="bold" font-size="24" text-anchor="middle" fill="currentColor">R2</text></symbol>
+        <symbol id="icon-ps-share" viewBox="0 0 100 60"><rect x="10" y="10" width="80" height="40" rx="20" stroke="currentColor" stroke-width="5" fill="none"/><text x="50" y="35" font-family="Arial" font-weight="bold" font-size="16" text-anchor="middle" fill="currentColor">SHARE</text></symbol>
+        <symbol id="icon-ps-options" viewBox="0 0 100 60"><rect x="10" y="10" width="80" height="40" rx="20" stroke="currentColor" stroke-width="5" fill="none"/><text x="50" y="35" font-family="Arial" font-weight="bold" font-size="16" text-anchor="middle" fill="currentColor">OPT</text></symbol>
+        <symbol id="icon-touchpad" viewBox="0 0 100 60"><rect x="5" y="5" width="90" height="50" rx="2" stroke="currentColor" stroke-width="5" fill="none"/><text x="50" y="35" font-family="Arial" font-size="14" text-anchor="middle" fill="currentColor">TOUCH</text></symbol>
+        
+        <symbol id="icon-dpad-up" viewBox="0 0 100 100"><path d="M50,15 L80,45 L20,45 Z" fill="currentColor"/><rect x="35" y="45" width="30" height="30" fill="currentColor"/></symbol>
+        <symbol id="icon-dpad-down" viewBox="0 0 100 100"><path d="M50,85 L20,55 L80,55 Z" fill="currentColor"/><rect x="35" y="25" width="30" height="30" fill="currentColor"/></rect><symbol id="icon-dpad-left" viewBox="0 0 100 100"><path d="M15,50 L45,20 L45,80 Z" fill="currentColor"/><rect x="45" y="35" width="30" height="30" fill="currentColor"/></symbol>
+        <symbol id="icon-dpad-right" viewBox="0 0 100 100"><path d="M85,50 L55,80 L55,20 Z" fill="currentColor"/><rect x="25" y="35" width="30" height="30" fill="currentColor"/></symbol>
+        <symbol id="icon-stick-l" viewBox="0 0 100 100"><circle cx="50" cy="50" r="40" stroke="currentColor" stroke-width="5" fill="none"/><circle cx="50" cy="50" r="25" fill="currentColor"/><text x="50" y="58" font-family="Arial" font-weight="900" font-size="24" text-anchor="middle" fill="#000">L</text></symbol>
+        <symbol id="icon-stick-r" viewBox="0 0 100 100"><circle cx="50" cy="50" r="40" stroke="currentColor" stroke-width="5" fill="none"/><circle cx="50" cy="50" r="25" fill="currentColor"/><text x="50" y="58" font-family="Arial" font-weight="900" font-size="24" text-anchor="middle" fill="#000">R</text></symbol>
+    </svg>
+
+    <div id="app-container">
+        <div id="filter-wrapper">
+            <iframe id="paddle-frame" src="" allow="gamepad"></iframe>
+            <iframe id="target-frame" src="" allow="gamepad"></iframe>
+        </div>
+
+        <div id="settings-menu">
+            <div id="menu-content" class="menu-container"></div>
+        </div>
+    </div>
+
+<script>
+// URL Constants for Colors
+const URL_SETS = {
+    black: {
+        ctrl: "https://gamepadviewer.com/?p=1&css=https%3A%2F%2Fhuntersdesingsfree.github.io%2FPs5%2FPs5%2520Black%2FPs5.css",
+        pad: "https://gamepadviewer.com/?p=1&css=https%3A%2F%2Fhuntersdesingsfree.github.io%2FPaddles%2FeXtremeRate%2520BEYOND%2FBlack%2FeXtremeRate%2520BEYOND%2520Paddles.css"
+    },
+    white: {
+        ctrl: "https://gamepadviewer.com/?p=1&css=https%3A%2F%2Fhuntersdesingsfree.github.io%2FPs5%2FPs5%2520White%2FPs5.css",
+        pad: "https://gamepadviewer.com/?p=1&css=https%3A%2F%2Fhuntersdesingsfree.github.io%2FPaddles%2FeXtremeRate%2520BEYOND%2FWhite%2FeXtremeRate%2520BEYOND%2520Paddles.css"
+    }
+};
+
+let CONFIG = {
+    hue: 0, sat: 100, 
+    rgbMode: false, rgbSpeed: 10,
+    menuOpac: 95,
+    scale: 100,
+    paddlesEnabled: false,
+    color: 'black', // Default color
+    map: {}, 
+    padMap: { 'p1': 0, 'p2': 1, 'p3': 2, 'p4': 3 } 
+};
+
+for(let i=0; i<18; i++) CONFIG.map[i] = i;
+
+let DRAFT_MAP = {};
+let DRAFT_PAD_MAP = {};
+
+const BTN_DEFS = [
+    { id:0, n:'Cross/A', i1:'#icon-ps-cross', i2:'#icon-xb-a' },
+    { id:1, n:'Circle/B', i1:'#icon-ps-circle', i2:'#icon-xb-b' },
+    { id:2, n:'Square/X', i1:'#icon-ps-square', i2:'#icon-xb-x' },
+    { id:3, n:'Triangle/Y', i1:'#icon-ps-triangle', i2:'#icon-xb-y' },
+    { id:4, n:'L1/LB', i1:'#icon-ps-l1', i2:'#icon-xb-lb' },
+    { id:5, n:'R1/RB', i1:'#icon-ps-r1', i2:'#icon-xb-rb' },
+    { id:6, n:'L2/LT', i1:'#icon-ps-l2', i2:'#icon-xb-lt' },
+    { id:7, n:'R2/RT', i1:'#icon-ps-r2', i2:'#icon-xb-rt' },
+    { id:8, n:'Share/View', i1:'#icon-ps-share', i2:'#icon-xb-view' },
+    { id:9, n:'Opt/Menu', i1:'#icon-ps-options', i2:'#icon-xb-menu' },
+    { id:10, n:'L3/LS', i1:'#icon-stick-l', i2:'#icon-stick-l' },
+    { id:11, n:'R3/RS', i1:'#icon-stick-r', i2:'#icon-stick-r' },
+    { id:12, n:'Up', i1:'#icon-dpad-up', i2:'#icon-dpad-up' },
+    { id:13, n:'Down', i1:'#icon-dpad-down', i2:'#icon-dpad-down' },
+    { id:14, n:'Left', i1:'#icon-dpad-left', i2:'#icon-dpad-left' },
+    { id:15, n:'Right', i1:'#icon-dpad-right', i2:'#icon-dpad-right' }
+];
+
+const PAD_DEFS = [
+    { id:'p1', n:'Paddle 1' },
+    { id:'p2', n:'Paddle 2' },
+    { id:'p3', n:'Paddle 3' },
+    { id:'p4', n:'Paddle 4' }
+];
+
+const STATE = {
+    menuOpen: false,
+    page: 'main',
+    menuIdx: 0,
+    listeningFor: null,
+    start: { pressed:false, time:0, rel:0 },
+    lastBtns: [], sliderHoldTime: 0,
+    stickState: { u:false, d:false, l:false, r:false }
+};
+
+const uiMenu = document.getElementById('settings-menu');
+const uiContent = document.getElementById('menu-content');
+const uiPaddleFrame = document.getElementById('paddle-frame');
+const uiTargetFrame = document.getElementById('target-frame');
+const r = document.documentElement;
+
+function loadConfig() {
+    const s = localStorage.getItem('ctrl_overlay_v49_cfg'); // Changed storage key to avoid conflicts
+    if(s) try { CONFIG = { ...CONFIG, ...JSON.parse(s) }; } catch(e){}
+    
+    // Ensure numbers
+    CONFIG.scale = Number(CONFIG.scale) || 100;
+    CONFIG.rgbSpeed = Number(CONFIG.rgbSpeed) || 10;
+    CONFIG.hue = Number(CONFIG.hue) || 0;
+    CONFIG.sat = Number(CONFIG.sat) || 100;
+    CONFIG.menuOpac = Number(CONFIG.menuOpac) || 95;
+    if(!CONFIG.color) CONFIG.color = 'black';
+
+    applyIframeUrls();
+    updateVisuals();
+}
+
+function saveConfig() {
+    localStorage.setItem('ctrl_overlay_v49_cfg', JSON.stringify(CONFIG));
+}
+
+function resetSettings() {
+    localStorage.removeItem('ctrl_overlay_v49_cfg');
+    CONFIG.hue = 0; CONFIG.sat = 100; CONFIG.rgbMode = false; CONFIG.menuOpac = 95;
+    CONFIG.scale = 100; CONFIG.rgbSpeed = 10;
+    CONFIG.paddlesEnabled = false;
+    CONFIG.color = 'black';
+    for(let i=0; i<18; i++) CONFIG.map[i] = i;
+    CONFIG.padMap = { 'p1': 0, 'p2': 1, 'p3': 2, 'p4': 3 };
+    saveConfig();
+    applyIframeUrls();
+    renderMenu(); updateVisuals();
+}
+
+function resetDraftMapping() {
+    for(let i=0; i<18; i++) DRAFT_MAP[i] = i;
+    DRAFT_PAD_MAP = { 'p1': 0, 'p2': 1, 'p3': 2, 'p4': 3 };
+    renderMenu();
+}
+
+function applyMappingFromDraft() {
+    CONFIG.map = { ...DRAFT_MAP };
+    CONFIG.padMap = { ...DRAFT_PAD_MAP };
+    saveConfig();
+    applyIframeUrls();
+    STATE.page = 'main'; STATE.menuIdx = 0; renderMenu();
+}
+
+function enterRemapMode(mode) {
+    DRAFT_MAP = { ...CONFIG.map };
+    DRAFT_PAD_MAP = { ...CONFIG.padMap };
+    STATE.page = mode;
+    STATE.menuIdx = 0;
+    renderMenu();
+}
+
+function applyIframeUrls() {
+    let ctrlMappings = [];
+    for(let i=0; i<18; i++) {
+        if(CONFIG.map[i] !== i) {
+            ctrlMappings.push({
+                targetType: "buttons", target: i.toString(), disabled: false,
+                choiceType: "buttons", choice: CONFIG.map[i].toString()
+            });
+        }
+    }
+    
+    // Get Base URL based on Color selection
+    const urls = URL_SETS[CONFIG.color] || URL_SETS.black;
+    
+    let ctrlUrl = urls.ctrl;
+    if(ctrlMappings.length > 0) ctrlUrl += `&map=${encodeURIComponent(JSON.stringify({ mapping: ctrlMappings }))}`;
+
+    let padMappings = [];
+    const p1Map = { target: "0", choice: CONFIG.padMap.p1.toString() };
+    const p2Map = { target: "1", choice: CONFIG.padMap.p2.toString() };
+    const p3Map = { target: "2", choice: CONFIG.padMap.p3.toString() };
+    const p4Map = { target: "3", choice: CONFIG.padMap.p4.toString() };
+    padMappings.push({ targetType: "buttons", disabled: false, choiceType: "buttons", ...p1Map });
+    padMappings.push({ targetType: "buttons", disabled: false, choiceType: "buttons", ...p2Map });
+    padMappings.push({ targetType: "buttons", disabled: false, choiceType: "buttons", ...p3Map });
+    padMappings.push({ targetType: "buttons", disabled: false, choiceType: "buttons", ...p4Map });
+
+    let padUrl = urls.pad + `&map=${encodeURIComponent(JSON.stringify({ mapping: padMappings }))}`;
+
+    if(uiTargetFrame.src !== ctrlUrl) uiTargetFrame.src = ctrlUrl;
+    if(uiPaddleFrame.src !== padUrl) uiPaddleFrame.src = padUrl;
+}
+
+function renderMenu() {
+    // Navigation bar with BOTH icons
+    let h = `<div class="help-bar">
+                <div class="help-group"><svg class="icon-tiny"><use href="#icon-dpad-all"></use></svg><span>Nav</span></div><span class="help-sep">|</span>
+                <div class="help-group"><svg class="icon-tiny"><use href="#icon-ps-cross"></use></svg><svg class="icon-tiny"><use href="#icon-xb-a"></use></svg><span>Ok</span></div><span class="help-sep">|</span>
+                <div class="help-group"><svg class="icon-tiny"><use href="#icon-ps-circle"></use></svg><svg class="icon-tiny"><use href="#icon-xb-b"></use></svg><span>Back</span></div>
+             </div>`;
+
+    if(STATE.page === 'main') {
+        h += `<div class="menu-header">CONTROLLER COLOR</div>
+              <div class="btn-row">
+                  <div class="menu-item btn-action ${CONFIG.color==='black'?'active-opt':''}" data-id="set_color_black">BLACK</div>
+                  <div class="menu-item btn-action ${CONFIG.color==='white'?'active-opt':''}" data-id="set_color_white">WHITE</div>
+              </div>
+
+              <div class="menu-header">GLOBAL SETTINGS</div>
+              ${sliderHTML('hue', 'Hue', CONFIG.hue, 0, 360, '°')}
+              ${sliderHTML('sat', 'Saturation', CONFIG.sat, 0, 200, '%')}
+              <div class="menu-item" data-id="rgbMode">
+                 <span class="menu-label">RGB Animation</span><span class="menu-val">${CONFIG.rgbMode?'ON':'OFF'}</span>
+              </div>
+              ${sliderHTML('rgbSpeed', 'Anim Speed', CONFIG.rgbSpeed, 1, 50, '')}
+              ${sliderHTML('scale', 'Scale', CONFIG.scale, 20, 100, '%')}
+              
+              <div class="menu-header">LAYOUT & INPUT</div>
+              <div class="menu-item" data-id="toggle_paddles">
+                 <span class="menu-label">Show Paddles</span><span class="menu-val">${CONFIG.paddlesEnabled?'ON':'OFF'}</span>
+              </div>
+              
+              <div class="btn-row">
+                  <div class="menu-item btn-action" data-id="goto_remap_ctrl">REMAP CONTROLLER</div>
+                  ${CONFIG.paddlesEnabled ? `<div class="menu-item btn-action" data-id="goto_remap_pads">REMAP PADDLES</div>` : ''}
+              </div>
+
+              <div class="menu-header">SYSTEM</div>
+              ${sliderHTML('menuOpac', 'Menu Opacity', CONFIG.menuOpac, 20, 100, '%')}
+              <div class="menu-item btn-action btn-danger" data-id="reset_settings">RESET ALL</div>`;
+        
+        h += `<div class="footer-brand"><img src="https://i.imgur.com/23GvUxq.png" class="logo-img"><div class="brand-text">Created by Hunters Designs</div></div>`;
+    } 
+    else if(STATE.page === 'remap_ctrl') {
+        h += `<div class="menu-header">REMAP CONTROLLER</div>`;
+        BTN_DEFS.forEach(b => {
+            if(b.id === 10 || b.id === 11 || b.id >= 16) return;
+
+            const mappedId = DRAFT_MAP[b.id];
+            const iconHTML = getBtnIconHTML(mappedId);
+            const isListening = (STATE.listeningFor === b.id);
+            
+            // D-Pad Logic: Only show 1 Icon if it's a D-Pad button (12-15)
+            const isDpad = (b.id >= 12 && b.id <= 15);
+            let leftIcons = `<svg class="icon-preview"><use href="${b.i1}"></use></svg>`;
+            if(!isDpad) leftIcons += `<svg class="icon-preview"><use href="${b.i2}"></use></svg>`;
+
+            h += `<div class="menu-item" data-id="remap_${b.id}">
+                    <div class="remap-row">
+                        <div class="remap-left">${leftIcons}</div>
+                        <span class="map-arrow">➔</span>
+                        <div class="remap-right">
+                            ${isListening ? `<span class="listening-anim">PRESS BTN...</span>` : iconHTML}
+                        </div>
+                    </div>
+                  </div>`;
+        });
+        h += `<div class="menu-item btn-action" data-id="apply_mapping">APPLY MAPPING</div>`;
+        h += `<div class="btn-row" style="margin-top:0;">
+                <div class="menu-item btn-action btn-danger" data-id="reset_map_only">RESET</div>
+                <div class="menu-item btn-action" data-id="back_no_save">CANCEL</div>
+              </div>`;
+    }
+    else if(STATE.page === 'remap_pads') {
+        h += `<div class="menu-header">REMAP PADDLES</div>`;
+        PAD_DEFS.forEach(p => {
+            const mappedId = DRAFT_PAD_MAP[p.id];
+            const iconHTML = getBtnIconHTML(mappedId);
+            const isListening = (STATE.listeningFor === p.id);
+            h += `<div class="menu-item" data-id="remap_pad_${p.id}">
+                    <div class="remap-row">
+                        <div class="menu-label"><span>${p.n}</span></div>
+                        <span class="map-arrow">➔</span>
+                        <div class="remap-right">
+                            ${isListening ? `<span class="listening-anim">PRESS BTN...</span>` : iconHTML}
+                        </div>
+                    </div>
+                  </div>`;
+        });
+        h += `<div class="menu-item btn-action" data-id="apply_mapping">APPLY MAPPING</div>`;
+        h += `<div class="btn-row" style="margin-top:0;">
+                <div class="menu-item btn-action btn-danger" data-id="reset_map_only">RESET</div>
+                <div class="menu-item btn-action" data-id="back_no_save">CANCEL</div>
+              </div>`;
+    }
+
+    uiContent.innerHTML = h;
+    updateVisuals();
+    updateMenuHighlight();
+}
+
+function sliderHTML(id, label, val, min, max, unit) {
+    // Ensure numeric
+    val = Number(val);
+    if(isNaN(val)) val = min; // Fallback if NaN
+    
+    const range = max - min;
+    const pct = ((val - min) / range) * 100;
+    
+    // Fixed ID matching by using variable "id" which now matches CONFIG keys exactly
+    return `<div class="menu-item" data-id="${id}" data-type="slider" data-min="${min}" data-max="${max}">
+                <span class="menu-label">${label}</span>
+                <div class="slider-wrapper">
+                    <div class="slider-val-disp" id="disp-${id}">${Math.round(val)}${unit}</div>
+                    <div class="slider-track"><div class="slider-fill" id="fill-${id}" style="width:${pct}%"></div><div class="slider-thumb" id="thumb-${id}" style="left:${pct}%"></div></div>
+                </div>
+            </div>`;
+}
+
+function getBtnIconHTML(physId) {
+    const def = BTN_DEFS.find(x => x.id === physId);
+    if(def) {
+        const isDpad = (physId >= 12 && physId <= 15);
+        let html = `<svg class="icon-result"><use href="${def.i1}"></use></svg>`;
+        if(!isDpad) html += `<svg class="icon-result"><use href="${def.i2}"></use></svg>`;
+        return html;
+    }
+    return `<span class="mapped-btn">BTN ${physId}</span>`;
+}
+
+function loop() {
+    requestAnimationFrame(loop);
+    const gp = navigator.getGamepads()[0];
+    
+    if(CONFIG.rgbMode) {
+        CONFIG.hue = (CONFIG.hue + (CONFIG.rgbSpeed * 0.06)) % 360;
+        updateVisuals();
+        
+        if(STATE.menuOpen) {
+            const elF = document.getElementById('fill-hue');
+            const elT = document.getElementById('thumb-hue');
+            const elD = document.getElementById('disp-hue');
+            if(elF && elT && elD) {
+                const pct = (CONFIG.hue / 360) * 100;
+                elF.style.width = pct + '%';
+                elT.style.left = pct + '%';
+                elD.innerText = Math.round(CONFIG.hue) + '°';
+            }
+        }
+    }
+
+    if(!gp) return;
+
+    const currBtns = []; 
+    for(let i=0; i<gp.buttons.length; i++) currBtns[i] = gp.buttons[i].pressed;
+    const pressed = (i) => currBtns[i] && !STATE.lastBtns[i];
+
+    if(pressed(9)) { 
+        STATE.start.pressed = true; 
+        STATE.start.time = Date.now(); 
+    } 
+    else if(!currBtns[9] && STATE.start.pressed) {
+        STATE.start.pressed = false;
+        if(Date.now() - STATE.start.rel < 400) toggleMenu();
+        STATE.start.rel = Date.now();
+    }
+
+    if(STATE.listeningFor !== null) {
+        for(let i=0; i<gp.buttons.length; i++) {
+            if(pressed(i)) { 
+                if(typeof STATE.listeningFor === 'string') {
+                    DRAFT_PAD_MAP[STATE.listeningFor] = i;
+                } else {
+                    DRAFT_MAP[STATE.listeningFor] = i;
+                }
+                STATE.listeningFor = null;
+                renderMenu();
+                break; 
+            }
+        }
+    } 
+    else if(STATE.menuOpen) {
+        handleMenuInput(gp, pressed);
+    }
+
+    STATE.lastBtns = currBtns;
+}
+
+function handleMenuInput(gp, pressed) {
+    const axes = gp.axes;
+    const sUp = axes[1] < -0.5; const sDown = axes[1] > 0.5;
+    const sLeft = axes[0] < -0.5; const sRight = axes[0] > 0.5;
+    
+    if(!STATE.stickState.u && sUp || pressed(12)) changeSel(-1);
+    if(!STATE.stickState.d && sDown || pressed(13)) changeSel(1);
+    STATE.stickState = { u:sUp, d:sDown, l:sLeft, r:sRight };
+
+    const items = document.querySelectorAll('.menu-item');
+    if(STATE.menuIdx >= items.length) STATE.menuIdx = items.length - 1;
+    const item = items[STATE.menuIdx];
+    if(!item) return;
+
+    const id = item.dataset.id;
+    const isSlider = item.dataset.type === 'slider';
+
+    if(isSlider) {
+        if(sLeft || sRight || gp.buttons[14].pressed || gp.buttons[15].pressed) {
+            STATE.sliderHoldTime++;
+            let speed = 1; 
+            if(STATE.sliderHoldTime > 30) speed = 5;
+            const dir = (sRight || gp.buttons[15].pressed) ? 1 : -1;
+            modifyConfig(id, dir * speed, item);
+        } else STATE.sliderHoldTime = 0;
+    }
+
+    if(pressed(0)) {
+        if(isSlider) return; 
+        
+        // Color Selection Logic
+        if(id === 'set_color_black') {
+            CONFIG.color = 'black'; saveConfig(); applyIframeUrls(); renderMenu();
+        }
+        else if(id === 'set_color_white') {
+            CONFIG.color = 'white'; saveConfig(); applyIframeUrls(); renderMenu();
+        }
+
+        else if(id === 'rgbMode') { CONFIG.rgbMode = !CONFIG.rgbMode; renderMenu(); saveConfig(); }
+        else if(id === 'toggle_paddles') { CONFIG.paddlesEnabled = !CONFIG.paddlesEnabled; renderMenu(); saveConfig(); }
+        else if(id === 'goto_remap_ctrl') { enterRemapMode('remap_ctrl'); }
+        else if(id === 'goto_remap_pads') { enterRemapMode('remap_pads'); }
+        else if(id === 'apply_mapping') { applyMappingFromDraft(); }
+        else if(id === 'reset_map_only') { resetDraftMapping(); }
+        else if(id === 'back_no_save') { STATE.page = 'main'; STATE.menuIdx = 0; renderMenu(); }
+        else if(id === 'reset_settings') { resetSettings(); }
+        else if(id.startsWith('remap_pad_')) { STATE.listeningFor = id.replace('remap_pad_', ''); renderMenu(); }
+        else if(id.startsWith('remap_')) { STATE.listeningFor = parseInt(id.replace('remap_', '')); renderMenu(); }
+    }
+    
+    if(pressed(1)) {
+        if(STATE.page !== 'main') { STATE.page = 'main'; STATE.menuIdx = 0; renderMenu(); }
+        else toggleMenu();
+    }
+}
+
+function modifyConfig(id, amount, item) {
+    const min = parseInt(item.dataset.min);
+    const max = parseInt(item.dataset.max);
+    
+    // Now using direct property access since IDs match Config keys
+    let val = CONFIG[id];
+    
+    if(id === 'hue') val = wrap(val + amount, 0, 360);
+    else val = clamp(val + amount, min, max);
+
+    CONFIG[id] = val;
+    saveConfig();
+
+    // Visual Updates
+    let dispUnit = '%';
+    if(id === 'hue') dispUnit = '°';
+    if(id === 'rgbSpeed') dispUnit = '';
+    
+    const displayEl = item.querySelector('.slider-val-disp');
+    if(displayEl) displayEl.innerText = Math.round(CONFIG[id]) + dispUnit;
+    
+    const pct = ((CONFIG[id] - min) / (max - min)) * 100;
+    item.querySelector('.slider-fill').style.width = pct + '%';
+    item.querySelector('.slider-thumb').style.left = pct + '%';
+    updateVisuals();
+}
+
+function changeSel(dir) {
+    const items = document.querySelectorAll('.menu-item');
+    STATE.menuIdx += dir;
+    if(STATE.menuIdx < 0) STATE.menuIdx = items.length - 1;
+    if(STATE.menuIdx >= items.length) STATE.menuIdx = 0;
+    updateMenuHighlight();
+}
+
+function updateMenuHighlight() {
+    const items = document.querySelectorAll('.menu-item');
+    items.forEach((el, i) => {
+        if(i === STATE.menuIdx) { el.classList.add('selected'); el.scrollIntoView({block:'nearest'}); }
+        else el.classList.remove('selected');
+    });
+}
+
+function toggleMenu() {
+    STATE.menuOpen = !STATE.menuOpen;
+    uiMenu.className = STATE.menuOpen ? 'open' : '';
+    if(STATE.menuOpen) { STATE.page = 'main'; STATE.menuIdx = 0; renderMenu(); }
+}
+
+function updateVisuals() {
+    r.style.setProperty('--global-hue', CONFIG.hue + 'deg'); 
+    r.style.setProperty('--global-sat', CONFIG.sat + '%');
+    r.style.setProperty('--content-scale', CONFIG.scale / 100);
+    
+    if(CONFIG.paddlesEnabled) uiPaddleFrame.classList.add('visible');
+    else uiPaddleFrame.classList.remove('visible');
+    
+    const menuEl = document.querySelector('.menu-container');
+    if(menuEl) menuEl.style.background = `radial-gradient(circle at center, hsla(348, 83%, 47%, ${CONFIG.menuOpac/100}) 0%, #050505 100%)`;
+}
+
+const clamp = (v, min, max) => Math.min(Math.max(v, min), max);
+const wrap = (v, min, max) => {
+    let r = max - min;
+    return min + ((((v - min) % r) + r) % r);
+};
+
+loadConfig(); loop();
+</script>
+</body>
+</html>
